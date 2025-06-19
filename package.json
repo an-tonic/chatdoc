@@ -10,9 +10,18 @@
     "test": "jest"
   },
   "dependencies": {
+    "@op-engineering/op-sqlite": "^14.0.4",
+    "@react-native-vector-icons/material-design-icons": "^12.0.1",
+    "@react-native/new-app-screen": "0.80.0",
+    "axios": "^1.10.0",
+    "llama.rn": "^0.5.11",
     "react": "19.1.0",
     "react-native": "0.80.0",
-    "@react-native/new-app-screen": "0.80.0"
+    "react-native-fs": "^2.20.0"
+  },
+  "op-sqlite": {
+    "sqliteVec": true,
+    "performanceMode": true
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
