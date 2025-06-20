@@ -9,6 +9,8 @@ import {DB, open} from '@op-engineering/op-sqlite';
 
 
 import Icon from "@react-native-vector-icons/material-design-icons";
+import {takeAndSavePhoto} from "./src/api/permissions.ts";
+import PhotoPicker from "./src/components/PhotoPicker.tsx";
 
 
 function App(): React.JSX.Element {
@@ -47,6 +49,14 @@ function App(): React.JSX.Element {
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [inputText, setInputText] = useState<string>('');
     const [dbInstance, setDbInstance] = useState<any>(null);
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const handlePaperclipPress = () => setPickerVisible(true);
+
+    const handlePhotoSelected = (path: string) => {
+        console.log('Photo saved at:', path);
+        // send or preview the image
+    };
 
     const handleDownloadModel = async (file: string) => {
         const downloadUrl = `https://huggingface.co/${model}/resolve/main/${file}`;
@@ -172,8 +182,7 @@ function App(): React.JSX.Element {
                     value={inputText}
                     onChangeText={setInputText}
                 />
-                <TouchableOpacity onPress={() => {
-                }} style={styles.iconButton}>
+                <TouchableOpacity onPress={handlePaperclipPress} style={styles.iconButton}>
                     <Icon name="paperclip" size={24} color="#818181"/>
                 </TouchableOpacity>
 
@@ -193,6 +202,11 @@ function App(): React.JSX.Element {
                 )}
 
             </View>
+            <PhotoPicker
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onPhotoSelected={handlePhotoSelected}
+            />
         </SafeAreaView>
     );
 
