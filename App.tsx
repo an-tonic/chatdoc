@@ -1,12 +1,11 @@
-import React, {useEffect, useRef} from 'react';
 import {Alert, Animated, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {downloadModel} from "./src/api/model.ts";
 import ProgressBar from "./src/components/ProgressBar.tsx";
 import {initLlama, releaseAllLlama} from 'llama.rn';
 import RNFS from 'react-native-fs';
 import ScrollView = Animated.ScrollView; // File system module
-import {open} from '@op-engineering/op-sqlite';
+import {DB, open} from '@op-engineering/op-sqlite';
 
 
 import Icon from "@react-native-vector-icons/material-design-icons";
@@ -14,31 +13,30 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 
 function App(): React.JSX.Element {
 
-    const db = open({
-        name: "documents.db",
-        location: "../files/databases"
-    });
 
-    db.execute(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS embeddings 
-      USING vec0(embedding float[768], image_path TEXT, description TEXT);
-    `);
 
-    function insertEmbedding(db: any, embedding: number[], imagePath: string, description: string) {
-        console.debug('inserting embedding');
-        db.execute(
-            `INSERT INTO embeddings (embedding, image_path, description)
-             VALUES (?, ?, ?)`,
-            [JSON.stringify(embedding), imagePath, description]
-        );
-        printDb()
-    }
+    useEffect(() => {
+        const setupDb = async () => {
+            const db = open({
+                name: "documents.db",
+                location: "../files/databases"
+            });
 
-    const printDb = async () => {
+            await db.execute(`
+              CREATE VIRTUAL TABLE IF NOT EXISTS embeddings 
+              USING vec0(embedding float[768], image_path TEXT, description TEXT);
+            `);
 
-        const result = await db.execute("SELECT * FROM embeddings");
-        console.log("result", result.rows);
-    };
+            setDbInstance(db);
+
+        };
+        loadModel("nomic-embed-text-v1.5.Q8_0.gguf");
+        setupDb();
+
+        return () => {
+            releaseAllLlama();
+        };
+    }, []);
 
 
     const model = "nomic-ai/nomic-embed-text-v1.5-GGUF";
@@ -48,6 +46,7 @@ function App(): React.JSX.Element {
     const [context, setContext] = useState<any>(null);
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [inputText, setInputText] = useState<string>('');
+    const [dbInstance, setDbInstance] = useState<any>(null);
 
     const handleDownloadModel = async (file: string) => {
         const downloadUrl = `https://huggingface.co/${model}/resolve/main/${file}`;
@@ -77,10 +76,9 @@ function App(): React.JSX.Element {
     const loadModel = async (modelName: string) => {
 
         try {
-
             const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
-
             const fileExists = await RNFS.exists(destPath);
+
             if (!fileExists) {
                 Alert.alert('Error Loading Model', 'The model file does not exist.');
                 return null;
@@ -91,15 +89,13 @@ function App(): React.JSX.Element {
                 setContext(null);
             }
 
+            console.log('Initializing llama...');
             const llamaContext = await initLlama({
                 model: destPath,
-
                 embedding: true,
             });
-
+            console.log('Model loaded successfully');
             setContext(llamaContext);
-            console.log("llamaContext set");
-
             return llamaContext;
         } catch (error) {
             Alert.alert('Error Loading Model', error instanceof Error ? error.message : 'An unknown error occurred.');
@@ -116,10 +112,9 @@ function App(): React.JSX.Element {
         try {
 
             const result = await context.embedding(text);
-            console.log(result)
-            setEmbeddingResult(result.embedding);
             await context.embedding("");
-            insertEmbedding(db, result.embedding, "", text);
+            //insertEmbedding(db, result.embedding, "", text);
+            await searchSimilarEmbedding(dbInstance, result.embedding);
 
         } catch (error) {
 
@@ -131,23 +126,34 @@ function App(): React.JSX.Element {
     };
 
 
-    function cosineSimilarity(a: number[], b: number[]) {
-        let dot = 0, normA = 0, normB = 0;
-        for (let i = 0; i < a.length; i++) {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    async function insertEmbedding(db: DB, embedding: number[], imagePath: string, description: string) {
+
+        await db.execute(
+            `INSERT INTO embeddings (embedding, image_path, description)
+             VALUES (?, ?, ?)`,
+            [JSON.stringify(embedding), imagePath, description]
+        );
+    }
+
+    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 1) {
+
+
+        const results = await db.execute(
+            `SELECT description, distance
+             FROM embeddings
+             WHERE embedding MATCH ?
+             ORDER BY distance LIMIT ?`,
+            [JSON.stringify(embedding), limit]
+        );
+        const description = results.rows[0].description?.toString() || "";
+
+
+        setEmbeddingResult(description);
     }
 
 
     return (
         <SafeAreaView style={{flex: 1}}>
-
-            <TouchableOpacity style={styles.button} onPress={() => loadModel("nomic-embed-text-v1.5.Q8_0.gguf")}>
-                <Text style={styles.buttonText}>Load Model</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity style={styles.button} onPress={() => {
                 handleDownloadModel("nomic-embed-text-v1.5.Q8_0.gguf");
@@ -177,8 +183,12 @@ function App(): React.JSX.Element {
                 </TouchableOpacity>
 
                 {inputText.length > 0 && (
-                    <TouchableOpacity onPress={() => handleSendMessage(inputText)} style={styles.iconButton}>
-                        <Icon name="send" size={32} color="#0b43d6"/>
+                    <TouchableOpacity
+                        onPress={() => handleSendMessage(inputText)}
+                        style={styles.iconButton}
+                        disabled={!context}>
+
+                        <Icon name="send" size={32} color={context ? "#0b43d6" : "#8c8c8c"}/>
                     </TouchableOpacity>
                 )}
 
