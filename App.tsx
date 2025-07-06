@@ -48,13 +48,10 @@ function App(): React.JSX.Element {
     }, []);
 
     useEffect(() => {
-
         ReceiveSharingIntent.getReceivedFiles((files: any) => {
-
-            setEmbeddingResult(JSON.stringify(files[0], null, 2))
-
+                setEmbeddingResult(JSON.stringify(files[0], null, 2))
             },
-            (error: any) =>{
+            (error: any) => {
                 console.log(error);
             },
             'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
@@ -147,8 +144,9 @@ function App(): React.JSX.Element {
         try {
 
             const result = await context.embedding(text);
+            console.log(result)
             await context.embedding("");
-            //insertEmbedding(db, result.embedding, "", text);
+            //insertEmbedding(dbInstance, result.embedding, "", text);
             await searchSimilarEmbedding(dbInstance, result.embedding);
 
         } catch (error) {
@@ -180,10 +178,12 @@ function App(): React.JSX.Element {
              ORDER BY distance LIMIT ?`,
             [JSON.stringify(embedding), limit]
         );
-        const description = results.rows[0].description?.toString() || "";
 
+        if (results.rows.length > 0) {
+            const description = results.rows[0].description?.toString() || "";
+            setEmbeddingResult(description);
+        }
 
-        setEmbeddingResult(description);
     }
 
 
