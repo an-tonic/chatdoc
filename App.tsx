@@ -1,25 +1,24 @@
 import {
     Alert,
     Animated,
-    NativeModules,
     SafeAreaView,
-    StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import {useEffect, useState} from 'react';
-import {downloadModel} from "./src/api/model.ts";
-import ProgressBar from "./src/components/ProgressBar.tsx";
 import {initLlama, releaseAllLlama} from 'llama.rn';
 import RNFS from 'react-native-fs';
 import {DB, open} from '@op-engineering/op-sqlite';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
-import Icon from "@react-native-vector-icons/material-design-icons";
 import PhotoPicker from "./src/components/PhotoPicker.tsx";
+import InputBar from "./src/components/InputBar.tsx";
 import {savePhotoToLocal} from "./src/api/utils.ts";
-import ScrollView = Animated.ScrollView; // File system module
+import {downloadModel} from "./src/api/model.ts";
+import ProgressBar from "./src/components/ProgressBar.tsx";
+import ScrollView = Animated.ScrollView;
+import {styles} from "./src/styles/styles.ts";
+import Icon from "@react-native-vector-icons/material-design-icons"; // File system module
 
 
 function App(): React.JSX.Element {
@@ -51,8 +50,8 @@ function App(): React.JSX.Element {
     useEffect(() => {
         ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
 
-                await savePhotoToLocal(files[0].contentUri)
-                setEmbeddingResult(JSON.stringify(files[0], null, 2))
+                const savedPath = await savePhotoToLocal(files[0].contentUri)
+                addImage(savedPath)
             },
             (error: any) => {
                 console.log(error);
@@ -68,19 +67,26 @@ function App(): React.JSX.Element {
 
     const model = "nomic-ai/nomic-embed-text-v1.5-GGUF";
 
-    const [embeddingResult, setEmbeddingResult] = useState<string>('test');
+
     const [progress, setProgress] = useState<number>(0);
     const [context, setContext] = useState<any>(null);
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [inputText, setInputText] = useState<string>('');
     const [dbInstance, setDbInstance] = useState<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [images, setImages] = useState<{ uri: string; description?: string }[]>([]);
+    const [pinnedImage, setPinnedImage] = useState<string | null>(null);
 
     const handlePaperclipPress = () => setPickerVisible(true);
 
     const handlePhotoSelected = (path: string) => {
         console.log('Photo saved at:', path);
-        // send or preview the image
+        addImage(path);
+    };
+
+    const addImage = (path: string) => {
+        const uri = path.startsWith('file://') ? path : `file://${path}`;
+        setImages(prev => [...prev, {uri: `file://${path}`, description: ""}]);
     };
 
     const handleDownloadModel = async (file: string) => {
@@ -145,7 +151,13 @@ function App(): React.JSX.Element {
         }
 
         try {
-
+            setImages(prev =>
+                prev.map(img =>
+                    img.uri === pinnedImage
+                        ? {...img, description: text}
+                        : img
+                )
+            );
             const result = await context.embedding(text);
 
             await context.embedding("");
@@ -184,7 +196,6 @@ function App(): React.JSX.Element {
 
         if (results.rows.length > 0) {
             const description = results.rows[0].description?.toString() || "";
-            setEmbeddingResult(description);
         }
 
     }
@@ -201,36 +212,48 @@ function App(): React.JSX.Element {
 
             {isDownloading && <ProgressBar progress={progress}/>}
 
-            <ScrollView><Text>{embeddingResult}</Text></ScrollView>
-
-            <View style={styles.inputRow}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Message..."
-                    value={inputText}
-                    onChangeText={setInputText}
-                />
-                <TouchableOpacity onPress={handlePaperclipPress} style={styles.iconButton}>
-                    <Icon name="paperclip" size={24} color="#818181"/>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => {
-                }} style={styles.iconButton}>
-                    <Icon name="microphone-outline" size={24} color="#818181"/>
-                </TouchableOpacity>
-
-
-                {inputText.length > 0 && (
+            <ScrollView contentContainerStyle={styles.chatContainer}>
+                {images.map(({uri, description}, index) => (
                     <TouchableOpacity
-                        onPress={() => handleSendMessage(inputText)}
-                        style={styles.iconButton}
-                        disabled={!context}>
+                        key={index}
+                        style={[
+                            styles.imageBubble,
+                            pinnedImage === uri && styles.pinnedImageBubble
+                        ]}
+                        onPress={() => {
+                            setPinnedImage(prev => (prev === uri ? null : uri));
+                            if (description) {
+                                setInputText(description);
+                            }
+                        }}
+                    >
+                        <Animated.Image
+                            source={{uri}}
+                            style={styles.image}
+                            resizeMode="cover"
+                        />
+                        {pinnedImage === uri && (
+                            <View style={styles.pinIconOverlay}>
+                                <Icon name="pin-outline" size={20} color="#0b43d6"/>
+                            </View>
+                        )}
+                        <Text style={styles.imageDescription}>
+                            {(description ?? '').length > 38
+                                ? `${description?.slice(0, 38)}...`
+                                : description ?? ''}
+                        </Text>
 
-                        <Icon name="send" size={32} color={context ? "#0b43d6" : "#8c8c8c"}/>
+
+
                     </TouchableOpacity>
-                )}
+                ))}
 
-            </View>
+            </ScrollView>
+
+
+            <InputBar
+                value={inputText} onChangeText={setInputText} onPressAttachFiles={handlePaperclipPress}
+                onPressSendMessage={() => handleSendMessage(inputText)} context={context}/>
             <PhotoPicker
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
@@ -241,46 +264,6 @@ function App(): React.JSX.Element {
 
 
 }
-
-
-const styles = StyleSheet.create({
-    container: {padding: 20},
-
-    button: {
-        backgroundColor: '#007AFF',
-        padding: 10,
-        borderRadius: 5,
-        marginBottom: 10,
-    },
-    buttonText: {
-        color: '#fff',
-        textAlign: 'center',
-    },
-
-    inputRow: {
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        marginBottom: 0,
-        borderWidth: 0,
-        overflow: 'hidden',
-    },
-
-    input: {
-        flex: 1,
-        padding: 10,
-        paddingLeft: 20,
-        fontSize: 18
-    },
-
-    iconButton: {
-        backgroundColor: 'rgba(0,0,0,0)',
-        paddingHorizontal: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    }
-
-
-});
 
 
 export default App;

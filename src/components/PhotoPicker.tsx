@@ -1,8 +1,7 @@
-import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, Platform, PermissionsAndroid, Alert} from 'react-native';
+import React from 'react';
+import {View, Text, TouchableOpacity, Alert} from 'react-native';
 import Modal from 'react-native-modal';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
-import RNFS from 'react-native-fs';
 import {requestCameraPermissions, requestStoragePermissions} from "../api/permissions.ts";
 import {savePhotoToLocal} from "../api/utils.ts";
 
