@@ -4,6 +4,7 @@ import Modal from 'react-native-modal';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
 import {requestCameraPermissions, requestStoragePermissions} from "../api/permissions.ts";
+import {savePhotoToLocal} from "../api/utils.ts";
 
 type Props = {
     visible: boolean;
@@ -41,8 +42,7 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
     };
 
     const saveToLocal = async (uri: string) => {
-        const destPath = `${RNFS.DocumentDirectoryPath}/photo_${Date.now()}.jpg`;
-        await RNFS.copyFile(uri, destPath);
+        const destPath = await savePhotoToLocal(uri)
         onPhotoSelected(destPath);
     };
 

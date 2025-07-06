@@ -1,7 +1,7 @@
 import {
     Alert,
     Animated,
-    DeviceEventEmitter,
+    NativeModules,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -9,16 +9,17 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {SetStateAction, useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {downloadModel} from "./src/api/model.ts";
 import ProgressBar from "./src/components/ProgressBar.tsx";
 import {initLlama, releaseAllLlama} from 'llama.rn';
 import RNFS from 'react-native-fs';
-import ScrollView = Animated.ScrollView; // File system module
 import {DB, open} from '@op-engineering/op-sqlite';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 import Icon from "@react-native-vector-icons/material-design-icons";
 import PhotoPicker from "./src/components/PhotoPicker.tsx";
+import {savePhotoToLocal} from "./src/api/utils.ts";
+import ScrollView = Animated.ScrollView; // File system module
 
 
 function App(): React.JSX.Element {
@@ -48,7 +49,9 @@ function App(): React.JSX.Element {
     }, []);
 
     useEffect(() => {
-        ReceiveSharingIntent.getReceivedFiles((files: any) => {
+        ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
+
+                await savePhotoToLocal(files[0].contentUri)
                 setEmbeddingResult(JSON.stringify(files[0], null, 2))
             },
             (error: any) => {
@@ -144,7 +147,7 @@ function App(): React.JSX.Element {
         try {
 
             const result = await context.embedding(text);
-            console.log(result)
+
             await context.embedding("");
             //insertEmbedding(dbInstance, result.embedding, "", text);
             await searchSimilarEmbedding(dbInstance, result.embedding);
