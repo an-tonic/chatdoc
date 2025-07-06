@@ -1,20 +1,27 @@
-import {Alert, Animated, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
-import {useEffect, useState} from 'react';
+import {
+    Alert,
+    Animated,
+    DeviceEventEmitter,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import {SetStateAction, useEffect, useState} from 'react';
 import {downloadModel} from "./src/api/model.ts";
 import ProgressBar from "./src/components/ProgressBar.tsx";
 import {initLlama, releaseAllLlama} from 'llama.rn';
 import RNFS from 'react-native-fs';
 import ScrollView = Animated.ScrollView; // File system module
 import {DB, open} from '@op-engineering/op-sqlite';
-
-
+import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 import Icon from "@react-native-vector-icons/material-design-icons";
-import {takeAndSavePhoto} from "./src/api/permissions.ts";
 import PhotoPicker from "./src/components/PhotoPicker.tsx";
 
 
 function App(): React.JSX.Element {
-
 
 
     useEffect(() => {
@@ -25,7 +32,7 @@ function App(): React.JSX.Element {
             });
 
             await db.execute(`
-              CREATE VIRTUAL TABLE IF NOT EXISTS embeddings 
+              CREATE VIRTUAL TABLE IF NOT EXISTS embeddings
               USING vec0(embedding float[768], image_path TEXT, description TEXT);
             `);
 
@@ -37,6 +44,24 @@ function App(): React.JSX.Element {
 
         return () => {
             releaseAllLlama();
+        };
+    }, []);
+
+    useEffect(() => {
+
+        ReceiveSharingIntent.getReceivedFiles((files: any) => {
+
+            setEmbeddingResult(JSON.stringify(files[0], null, 2))
+
+            },
+            (error: any) =>{
+                console.log(error);
+            },
+            'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
+        );
+
+        return () => {
+            ReceiveSharingIntent.clearReceivedFiles();
         };
     }, []);
 
@@ -173,7 +198,7 @@ function App(): React.JSX.Element {
 
             {isDownloading && <ProgressBar progress={progress}/>}
 
-            <ScrollView><Text>{embeddingResult}</Text> </ScrollView>
+            <ScrollView><Text>{embeddingResult}</Text></ScrollView>
 
             <View style={styles.inputRow}>
                 <TextInput
@@ -190,6 +215,7 @@ function App(): React.JSX.Element {
                 }} style={styles.iconButton}>
                     <Icon name="microphone-outline" size={24} color="#818181"/>
                 </TouchableOpacity>
+
 
                 {inputText.length > 0 && (
                     <TouchableOpacity
