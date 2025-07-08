@@ -1,15 +1,11 @@
-import { StyleSheet } from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
+
+const screenWidth = Dimensions.get('window').width;
 
 export const styles = StyleSheet.create({
     container: {padding: 20},
 
-    imageDescription: {
-        color: '#555',
-        fontSize: 12,
-        paddingTop: 4,
-        paddingHorizontal: 6,
-        textAlign: 'left',
-    },
+
 
     pinnedImageBubble: {
         borderWidth: 2,
@@ -36,18 +32,30 @@ export const styles = StyleSheet.create({
 
     imageBubble: {
         alignSelf: 'flex-end',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#eae9e9',
         borderRadius: 12,
         padding: 5,
-        maxWidth: '80%',
+        width: screenWidth * 0.6,
+
+    },
+
+    imageWrapper: {
+        width: '100%',
+        aspectRatio: 1,
     },
 
     image: {
-        width: 250,
-        height: 250,
+        width: '100%',
+        height: '100%',
         borderRadius: 10,
     },
-
+    imageDescription: {
+        color: '#555',
+        fontSize: 12,
+        paddingTop: 4,
+        paddingHorizontal: 6,
+        textAlign: 'left',
+    },
     button: {
         backgroundColor: '#007AFF',
         padding: 10,

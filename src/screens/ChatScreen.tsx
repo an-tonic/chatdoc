@@ -1,4 +1,4 @@
-import {Alert, Animated, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Animated, Image, Text, TouchableOpacity, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useEffect, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
@@ -162,24 +162,28 @@ function ChatScreen() {
                             }
                         }}
                     >
-                        <Animated.Image
-                            source={{uri}}
-                            style={styles.image}
-                            resizeMode="cover"
-                        />
-                        {pinnedImage === uri && (
-                            <View style={styles.pinIconOverlay}>
-                                <Icon name="pin-outline" size={20} color="#0b43d6"/>
-                            </View>
-                        )}
-                        <Text style={styles.imageDescription}>
-                            {(description ?? '').length > 38
-                                ? `${description?.slice(0, 38)}...`
-                                : description ?? ''}
+                        <View style={styles.imageWrapper}>
+                            <Image
+                                source={{ uri }}
+                                style={styles.image}
+                                resizeMode="cover"
+                            />
+                            {pinnedImage === uri && (
+                                <View style={styles.pinIconOverlay}>
+                                    <Icon name="pin-outline" size={20} color="#0b43d6" />
+                                </View>
+                            )}
+                        </View>
+
+                        <Text
+                            style={styles.imageDescription}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
+                        >
+                            {description ?? ''}
                         </Text>
-
-
                     </TouchableOpacity>
+
                 ))}
 
             </ScrollView>

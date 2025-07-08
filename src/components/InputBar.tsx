@@ -30,15 +30,15 @@ export default function InputBar(props: {
         </TouchableOpacity>
 
 
-        {props.value.length > 0 && (
+
             <TouchableOpacity
                 onPress={props.onPressSendMessage}
                 style={styles.iconButton}
-                disabled={!props.context}>
+                disabled={props.value.length === 0}>
 
-                <Icon name="send" size={32} color={props.context ? "#0b43d6" : "#8c8c8c"}/>
+                <Icon name="send" size={32} color={props.value.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
             </TouchableOpacity>
-        )}
+
 
     </View>;
 }
