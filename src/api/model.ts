@@ -1,4 +1,6 @@
 import RNFS from "react-native-fs";
+import {Alert} from "react-native";
+import {initLlama, releaseAllLlama} from "llama.rn";
 
 export const downloadModel = async (
     modelName: string,
@@ -42,5 +44,35 @@ export const downloadModel = async (
         }
     } catch (error) {
         throw new Error(`Failed to download model: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+
+export const loadModel = async (modelName: string, context: any) => {
+
+    try {
+        const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
+        const fileExists = await RNFS.exists(destPath);
+
+        if (!fileExists) {
+            Alert.alert('Error Loading Model', 'The model file does not exist.');
+            return null;
+        }
+
+        if (context) {
+            await releaseAllLlama();
+            return null
+        }
+
+        console.log('Initializing llama...');
+        const llamaContext = await initLlama({
+            model: destPath,
+            embedding: true,
+        });
+        console.log('Model loaded successfully');
+        return llamaContext;
+    } catch (error) {
+        Alert.alert('Error Loading Model', error instanceof Error ? error.message : 'An unknown error occurred.');
+        return null;
     }
 };
