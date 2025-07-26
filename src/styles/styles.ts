@@ -30,6 +30,19 @@ export const styles = StyleSheet.create({
         flexDirection: 'column',
     },
 
+    textBubble: {
+        backgroundColor: '#e3e2e2',
+        padding: 10,
+        borderRadius: 10,
+        marginVertical: 4,
+        maxWidth: '80%',
+        alignSelf: 'flex-end', // or 'flex-start' for received messages
+    },
+    textMessage: {
+        fontSize: 16,
+        color: '#333',
+    },
+
     imageBubble: {
         alignSelf: 'flex-end',
         backgroundColor: '#eae9e9',
@@ -37,6 +50,14 @@ export const styles = StyleSheet.create({
         padding: 5,
         width: screenWidth * 0.6,
 
+    },
+    imageBubbleLeft: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#f0f0f0'
+    },
+    imageBubbleRight: {
+        alignSelf: 'flex-end',
+        backgroundColor: '#d0e0ff'
     },
 
     imageWrapper: {
