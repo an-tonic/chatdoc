@@ -1,41 +1,55 @@
-import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import ChatScreen from './src/screens/ChatScreen.tsx';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-import {SafeAreaProvider} from "react-native-safe-area-context";
+import SplashScreen from './src/screens/SplashScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { TouchableOpacity } from 'react-native';
+import Icon from '@react-native-vector-icons/material-design-icons';
 
-import type {RootStackParamList} from './src/navigation/types';
-import {TouchableOpacity} from "react-native";
-import Icon from "@react-native-vector-icons/material-design-icons";
+const Stack = createNativeStackNavigator();
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+export default function App() {
+    const [chatReady, setChatReady] = useState(false);
+    const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
-function App(): React.JSX.Element {
+    useEffect(() => {
+        const timeout = setTimeout(() => setMinTimeElapsed(true), 1000);
+        return () => clearTimeout(timeout);
+    }, []);
+
+    const showSplash = !chatReady || !minTimeElapsed;
+
     return (
         <SafeAreaProvider>
-            <NavigationContainer>
-                <Stack.Navigator initialRouteName="Chat">
-                    <Stack.Screen
-                        name="Chat"
-                        component={ChatScreen}
-                        options={({navigation}) => ({
-                            title: 'Chat', // Set custom title here
-                            headerRight: () => (
-                                <TouchableOpacity
-                                    onPress={() => navigation.navigate('Settings')}
-                                >
-                                    <Icon name="cog" size={34} color="#0b43d6"/>
-                                </TouchableOpacity>
-                            ),
-                        })}
-                    />
+            <View style={{ flex: 1 }}>
+                <NavigationContainer>
+                    <Stack.Navigator initialRouteName="Chat">
+                        <Stack.Screen
+                            name="Chat"
+                            options={({ navigation }) => ({
+                                title: 'Chat',
+                                headerRight: () => (
+                                    <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                                        <Icon name="cog" size={34} color="#0b43d6" />
+                                    </TouchableOpacity>
+                                ),
+                            })}
+                        >
+                            {() => <ChatScreen onReady={() => setChatReady(true)} />}
+                        </Stack.Screen>
+                        <Stack.Screen name="Settings" component={SettingsScreen} />
+                    </Stack.Navigator>
+                </NavigationContainer>
 
-                    <Stack.Screen name="Settings" component={SettingsScreen}/>
-                </Stack.Navigator>
-            </NavigationContainer>
+                {showSplash && (
+                    <View style={StyleSheet.absoluteFill}>
+                        <SplashScreen />
+                    </View>
+                )}
+            </View>
         </SafeAreaProvider>
     );
 }
-
-export default App;

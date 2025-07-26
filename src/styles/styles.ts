@@ -74,6 +74,7 @@ export const styles = StyleSheet.create({
         paddingBottom: 0,
         borderWidth: 0,
         overflow: 'hidden',
+        backgroundColor: '#e1e0e0'
     },
 
     input: {

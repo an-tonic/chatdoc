@@ -15,12 +15,16 @@ import {NativeStackNavigationProp} from "@react-navigation/native-stack";
 import {loadModel} from "../api/model.ts";
 import ScrollView = Animated.ScrollView;
 
+type Props = {
+    onReady: () => void;
+};
 
-function ChatScreen() {
+function ChatScreen({onReady}: Props) {
 
 
     useEffect(() => {
         const setup = async () => {
+
             const db = open({
                 name: "documents.db",
                 location: "../files/databases"
@@ -34,6 +38,7 @@ function ChatScreen() {
 
             const newContext = await loadModel("nomic-embed-text-v1.5.Q8_0.gguf", context);
             setContext(newContext);
+            onReady();
         };
 
         void setup();
@@ -68,7 +73,6 @@ function ChatScreen() {
 
 
     const [context, setContext] = useState<any>(null);
-
     const [inputText, setInputText] = useState<string>('');
     const [dbInstance, setDbInstance] = useState<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
@@ -95,26 +99,35 @@ function ChatScreen() {
         }
 
         try {
-            setImages(prev =>
-                prev.map(img =>
-                    img.uri === pinnedImage
-                        ? {...img, description: text}
-                        : img
-                )
-            );
             const result = await context.embedding(text);
-
             await context.embedding("");
-            //insertEmbedding(dbInstance, result.embedding, "", text);
             await searchSimilarEmbedding(dbInstance, result.embedding);
-
         } catch (error) {
-
             Alert.alert(
                 'Error During Inference',
                 error instanceof Error ? error.message : 'An unknown error occurred.',
             );
         }
+    };
+
+    const handleNewEmbedding = async (text: string) => {
+        if (!context) {
+            Alert.alert('Model Not Loaded', 'Please load the model first.');
+            return;
+        }
+        const result = await context.embedding(text);
+        console.log(pinnedImage);
+        const imageUri = pinnedImage || "Not Found";
+        // await insertEmbedding(dbInstance, result.embedding, imageUri, text);
+        await updateEmbeddingByPath(dbInstance, imageUri, result.embedding, text);
+
+        setImages(prev =>
+            prev.map(img =>
+                img.uri === pinnedImage
+                    ? {...img, description: text}
+                    : img
+            )
+        );
     };
 
 
@@ -125,7 +138,30 @@ function ChatScreen() {
              VALUES (?, ?, ?)`,
             [JSON.stringify(embedding), imagePath, description]
         );
+
     }
+
+    async function updateEmbeddingByPath(
+        db: DB,
+        imagePath: string,
+        newEmbedding: number[],
+        newDescription: string
+    ) {
+        await db.execute(
+            `UPDATE embeddings
+             SET embedding = ?,
+                 description = ?
+             WHERE image_path = ?`,
+            [JSON.stringify(newEmbedding), newDescription, imagePath]
+        );
+        const results = await db.execute(
+            `SELECT *
+             FROM embeddings
+            `
+        );
+        console.log(results.rows);
+    }
+
 
     async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 1) {
 
@@ -164,13 +200,13 @@ function ChatScreen() {
                     >
                         <View style={styles.imageWrapper}>
                             <Image
-                                source={{ uri }}
+                                source={{uri}}
                                 style={styles.image}
                                 resizeMode="cover"
                             />
                             {pinnedImage === uri && (
                                 <View style={styles.pinIconOverlay}>
-                                    <Icon name="pin-outline" size={20} color="#0b43d6" />
+                                    <Icon name="pin-outline" size={20} color="#0b43d6"/>
                                 </View>
                             )}
                         </View>
@@ -190,8 +226,20 @@ function ChatScreen() {
 
 
             <InputBar
-                value={inputText} onChangeText={setInputText} onPressAttachFiles={handlePaperclipPress}
-                onPressSendMessage={() => handleSendMessage(inputText)} context={context}/>
+                value={inputText}
+                onChangeText={setInputText}
+                onPressAttachFiles={handlePaperclipPress}
+                onPressSendMessage={async () => {
+                    if (pinnedImage) {
+                        await handleNewEmbedding(inputText);
+                    } else {
+                        await handleSendMessage(inputText);
+                    }
+                }}
+                context={context}
+            />
+
+
             <PhotoPicker
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
