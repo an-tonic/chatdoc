@@ -77,12 +77,20 @@ export const styles = StyleSheet.create({
         paddingHorizontal: 6,
         textAlign: 'left',
     },
-    button: {
+    defaultButton: {
         backgroundColor: '#007AFF',
         padding: 10,
         borderRadius: 5,
         marginBottom: 10,
     },
+
+    dangerButton:{
+        backgroundColor: '#ff0000',
+        padding: 10,
+        borderRadius: 5,
+        marginBottom: 10,
+    },
+
     buttonText: {
         color: '#fff',
         textAlign: 'center',
