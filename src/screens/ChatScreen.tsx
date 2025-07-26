@@ -98,7 +98,7 @@ function ChatScreen({onReady}: Props) {
 
     const addImage = (path: string, description: string = "...", source: 'user' | 'search' = 'user') => {
         const uri = path.startsWith('file://') ? path : `file://${path}`;
-        setMessages(prev => [...prev, { type: 'image', uri, description, source }]);
+        setMessages(prev => [...prev, {type: 'image', uri, description, source}]);
         setPinnedImagePath(source === 'user' ? uri : null);
     };
 
@@ -110,7 +110,7 @@ function ChatScreen({onReady}: Props) {
         }
 
         try {
-            setMessages(prev => [...prev, { type: 'text', text: text, source: 'user' }]);
+            setMessages(prev => [...prev, {type: 'text', text: text, source: 'user'}]);
             const result = await context.embedding(text);
             await context.embedding("");
             const isFoundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
@@ -139,7 +139,7 @@ function ChatScreen({onReady}: Props) {
         setMessages(prev =>
             prev.map(msg =>
                 msg.type === 'image' && msg.uri === pinnedImagePath
-                    ? { ...msg, description: text }
+                    ? {...msg, description: text}
                     : msg
             )
         );
@@ -182,6 +182,9 @@ function ChatScreen({onReady}: Props) {
                 addImage(path, description, 'search');
             }
             return true;
+        } else {
+            const text = "Sorry, could not find any matching documents."
+            setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
         }
 
     }
@@ -209,7 +212,8 @@ function ChatScreen({onReady}: Props) {
                         );
                     } else if (msg.type === 'text') {
                         return (
-                            <View key={index} style={styles.textBubble}>
+                            <View key={index} style={[styles.textBubble,
+                                msg.source === "search" ? styles. msgLeft : styles. msgRight]}>
                                 <Text style={styles.textMessage}>{msg.text}</Text>
                             </View>
                         );
@@ -218,7 +222,6 @@ function ChatScreen({onReady}: Props) {
                     }
                 })}
             </Animated.ScrollView>
-
 
 
             <InputBar

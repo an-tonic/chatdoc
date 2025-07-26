@@ -4,18 +4,15 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 
 
 export default function BubbleImage(props: {
-    // source: "user" | "search",
     pinnedImage: string | null,
     image: { uri: string; description: string, source: 'user' | 'search' }
-    // uri: string,
     onPress: () => void,
-    // description: string
 }) {
     return <TouchableOpacity
 
         style={[
             styles.imageBubble,
-            props.image.source === "search" ? styles.imageBubbleLeft : styles.imageBubbleRight,
+            props.image.source === "search" ? styles.msgLeft : styles.msgRight,
             props.pinnedImage === props.image.uri && styles.pinnedImageBubble
         ]}
         onPress={props.onPress}

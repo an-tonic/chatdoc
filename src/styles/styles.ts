@@ -51,11 +51,11 @@ export const styles = StyleSheet.create({
         width: screenWidth * 0.6,
 
     },
-    imageBubbleLeft: {
+    msgLeft: {
         alignSelf: 'flex-start',
-        backgroundColor: '#f0f0f0'
+        backgroundColor: '#d6d6d6'
     },
-    imageBubbleRight: {
+    msgRight: {
         alignSelf: 'flex-end',
         backgroundColor: '#d0e0ff'
     },
