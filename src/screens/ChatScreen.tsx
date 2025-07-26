@@ -1,11 +1,11 @@
-import {Alert, Animated, Image, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Animated, Image, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
 import {DB, open} from '@op-engineering/op-sqlite';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 import PhotoPicker from "../components/PhotoPicker.tsx"; // File system module
-import InputBar from "../components/InputBar.tsx";
+import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
 import {savePhotoToLocal} from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
 import Icon from "@react-native-vector-icons/material-design-icons";
@@ -13,7 +13,6 @@ import {useNavigation} from "@react-navigation/native";
 import {RootStackParamList} from "../navigation/types.ts";
 import {NativeStackNavigationProp} from "@react-navigation/native-stack";
 import {loadModel} from "../api/model.ts";
-import ScrollView = Animated.ScrollView;
 
 type Props = {
     onReady: () => void;
@@ -70,13 +69,14 @@ function ChatScreen({onReady}: Props) {
     type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
 
     const navigation = useNavigation<NavigationProp>();
-
+    const inputBarRef = useRef<InputBarHandle>(null);
+    const scrollViewRef = useRef<ScrollView>(null);
 
     const [context, setContext] = useState<any>(null);
     const [inputText, setInputText] = useState<string>('');
     const [dbInstance, setDbInstance] = useState<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
-    const [images, setImages] = useState<{ uri: string; description?: string }[]>([]);
+    const [images, setImages] = useState<{ uri: string; description: string }[]>([]);
     const [pinnedImage, setPinnedImage] = useState<string | null>(null);
 
     const handlePaperclipPress = () => setPickerVisible(true);
@@ -84,12 +84,15 @@ function ChatScreen({onReady}: Props) {
     const handlePhotoSelected = (path: string) => {
         console.log('Photo saved at:', path);
         addImage(path);
+        inputBarRef.current?.focus();
+        scrollViewRef.current?.scrollToEnd();
     };
 
 
     const addImage = (path: string) => {
         const uri = path.startsWith('file://') ? path : `file://${path}`;
         setImages(prev => [...prev, {uri: uri, description: ""}]);
+        setPinnedImage(uri);
     };
 
     const handleSendMessage = async (text: string) => {
@@ -141,15 +144,11 @@ function ChatScreen({onReady}: Props) {
 
     }
 
-    async function updateEmbeddingByPath(
-        db: DB,
-        imagePath: string,
-        newEmbedding: number[],
-        newDescription: string
-    ) {
+    async function updateEmbeddingByPath(db: DB, imagePath: string, newEmbedding: number[], newDescription: string) {
+
         await db.execute(
             `UPDATE embeddings
-             SET embedding = ?,
+             SET embedding   = ?,
                  description = ?
              WHERE image_path = ?`,
             [JSON.stringify(newEmbedding), newDescription, imagePath]
@@ -183,7 +182,10 @@ function ChatScreen({onReady}: Props) {
     return (
         <SafeAreaView style={{flex: 1}}>
 
-            <ScrollView contentContainerStyle={styles.chatContainer}>
+            <Animated.ScrollView
+                contentContainerStyle={styles.chatContainer}
+                ref={scrollViewRef}
+            >
                 {images.map(({uri, description}, index) => (
                     <TouchableOpacity
                         key={index}
@@ -193,9 +195,7 @@ function ChatScreen({onReady}: Props) {
                         ]}
                         onPress={() => {
                             setPinnedImage(prev => (prev === uri ? null : uri));
-                            if (description) {
-                                setInputText(description);
-                            }
+                            setInputText(description);
                         }}
                     >
                         <View style={styles.imageWrapper}>
@@ -222,10 +222,11 @@ function ChatScreen({onReady}: Props) {
 
                 ))}
 
-            </ScrollView>
+            </Animated.ScrollView>
 
 
             <InputBar
+                ref={inputBarRef}
                 value={inputText}
                 onChangeText={setInputText}
                 onPressAttachFiles={handlePaperclipPress}

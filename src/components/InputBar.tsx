@@ -1,17 +1,31 @@
 import {TextInput, TouchableOpacity, View} from "react-native";
 import {styles} from "../styles/styles.ts";
 import Icon from "@react-native-vector-icons/material-design-icons";
+import {forwardRef, useImperativeHandle, useRef} from "react";
+
+export type InputBarHandle = {
+    focus: () => void
+};
 
 
-export default function InputBar(props: {
+const InputBar = forwardRef<InputBarHandle, {
     value: string,
-    onChangeText: (value: (((prevState: string) => string) | string)) => void,
+    onChangeText: (value: string | ((prevState: string) => string)) => void,
     onPressAttachFiles: () => void,
     onPressSendMessage: () => Promise<void>,
     context: any
-}) {
+}>((props, ref) => {
+    const inputRef = useRef<TextInput>(null);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        }
+    }));
+
     return <View style={styles.inputRow}>
         <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Message..."
             value={props.value}
@@ -30,15 +44,16 @@ export default function InputBar(props: {
         </TouchableOpacity>
 
 
+        <TouchableOpacity
+            onPress={props.onPressSendMessage}
+            style={styles.iconButton}
+            disabled={props.value.length === 0}>
 
-            <TouchableOpacity
-                onPress={props.onPressSendMessage}
-                style={styles.iconButton}
-                disabled={props.value.length === 0}>
-
-                <Icon name="send" size={32} color={props.value.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
-            </TouchableOpacity>
+            <Icon name="send" size={32} color={props.value.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
+        </TouchableOpacity>
 
 
     </View>;
-}
+});
+
+export default InputBar;
