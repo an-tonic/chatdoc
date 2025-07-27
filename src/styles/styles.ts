@@ -108,13 +108,13 @@ export const styles = StyleSheet.create({
 
     input: {
         flex: 1,
-        paddingLeft: 10,
+        paddingLeft: 15,
         fontSize: 18
     },
 
     iconButton: {
         backgroundColor: 'rgba(0,0,0,0)',
-        paddingHorizontal: 10,
+        paddingRight: 15,
         paddingBottom: 10
     }
 

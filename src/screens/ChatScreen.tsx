@@ -113,10 +113,21 @@ function ChatScreen({onReady}: Props) {
             setMessages(prev => [...prev, {type: 'text', text: text, source: 'user'}]);
             const result = await context.embedding(text);
             await context.embedding("");
-            const isFoundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
-            if (isFoundDocument) {
+            const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
+            if (foundDocument) {
+
                 scrollViewRef.current?.scrollToEnd();
+                const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
+
+                const text = `Found this document (${confidence.toFixed(1)}%): `
+                setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
+                addImage(foundDocument.path, foundDocument.description, 'search')
+
+            } else {
+                const text = "Sorry, could not find any matching documents."
+                setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
             }
+            setInputText("")
         } catch (error) {
             Alert.alert(
                 'Error During Inference',
@@ -165,7 +176,7 @@ function ChatScreen({onReady}: Props) {
 
     }
 
-    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 1) {
+    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 10) {
 
         const results = await db.execute(
             `SELECT description, image_path, distance
@@ -178,14 +189,13 @@ function ChatScreen({onReady}: Props) {
         if (results.rows.length > 0) {
             const description = results.rows[0].description?.toString() || "";
             const path = results.rows[0].image_path?.toString()
+            const distance = results.rows[0].distance?.toString() || "";
             if (path) {
-                addImage(path, description, 'search');
+                // addImage(path, description, 'search');
+                return {path, description, distance}
             }
-            return true;
-        } else {
-            const text = "Sorry, could not find any matching documents."
-            setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
         }
+        return null
 
     }
 

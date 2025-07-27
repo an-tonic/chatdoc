@@ -49,7 +49,7 @@ const InputBar = forwardRef<InputBarHandle, {
             style={styles.iconButton}
             disabled={props.value.length === 0}>
 
-            <Icon name="send" size={32} color={props.value.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
+            <Icon name="send" size={24} color={props.value.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
         </TouchableOpacity>
 
 
