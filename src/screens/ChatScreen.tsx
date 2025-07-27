@@ -86,6 +86,7 @@ function ChatScreen({onReady}: Props) {
     const [pickerVisible, setPickerVisible] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [pinnedImagePath, setPinnedImagePath] = useState<string | null>(null);
+    const [showScrollDownButton, setShowScrollDownButton] = useState(false);
 
     const handlePaperclipPress = () => setPickerVisible(true);
 
@@ -141,12 +142,8 @@ function ChatScreen({onReady}: Props) {
             Alert.alert('Model Not Loaded', 'Please load the model first.');
             return;
         }
-        const result = await context.embedding(text);
-        console.log(pinnedImagePath);
-        const imageUri = pinnedImagePath || "Not Found";
-        // await insertEmbedding(dbInstance, result.embedding, imageUri, text);
-        await updateEmbeddingByPath(dbInstance, imageUri, result.embedding, text);
 
+        const imageUri = pinnedImagePath || "Not Found";
         setMessages(prev =>
             prev.map(msg =>
                 msg.type === 'image' && msg.uri === pinnedImagePath
@@ -154,6 +151,11 @@ function ChatScreen({onReady}: Props) {
                     : msg
             )
         );
+        setInputText("")
+        setPinnedImagePath("")
+        const result = await context.embedding(text);
+        await updateEmbeddingByPath(dbInstance, imageUri, result.embedding, text);
+
     };
 
     async function updateEmbeddingByPath(db: DB, imagePath: string, newEmbedding: number[], newDescription: string) {
@@ -191,7 +193,6 @@ function ChatScreen({onReady}: Props) {
             const path = results.rows[0].image_path?.toString()
             const distance = results.rows[0].distance?.toString() || "";
             if (path) {
-                // addImage(path, description, 'search');
                 return {path, description, distance}
             }
         }
@@ -206,6 +207,14 @@ function ChatScreen({onReady}: Props) {
             <Animated.ScrollView
                 contentContainerStyle={styles.chatContainer}
                 ref={scrollViewRef}
+                onScroll={event => {
+                    const offsetY = event.nativeEvent.contentOffset.y;
+                    const contentHeight = event.nativeEvent.contentSize.height;
+                    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+                    const isAtBottom = offsetY + layoutHeight >= contentHeight - 100;
+                    setShowScrollDownButton(!isAtBottom);
+                }}
+                scrollEventThrottle={30}
             >
                 {messages.map((msg, index) => {
                     if (msg.type === 'image') {
@@ -232,6 +241,15 @@ function ChatScreen({onReady}: Props) {
                     }
                 })}
             </Animated.ScrollView>
+
+            {showScrollDownButton && (
+                <View style={styles.scrollDownButton}>
+                    <Text onPress={() => scrollViewRef.current?.scrollToEnd({animated: true})}
+                          style={styles.scrollDownText}>
+                        ↓
+                    </Text>
+                </View>
+            )}
 
 
             <InputBar

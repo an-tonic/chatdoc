@@ -116,7 +116,25 @@ export const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0)',
         paddingRight: 15,
         paddingBottom: 10
-    }
+    },
+
+    scrollDownButton: {
+        position: 'absolute',
+        bottom: 60,
+        right: 15,
+        backgroundColor: '#333',
+        borderRadius: 30,
+        width: 48,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        zIndex: 10,
+    },
+    scrollDownText: {
+        color: 'white',
+        fontSize: 24,
+    },
 
 
 });
