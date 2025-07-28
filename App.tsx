@@ -1,28 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, {useEffect, useState} from 'react';
+import {Alert, StyleSheet, TouchableOpacity, View} from 'react-native';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SplashScreen from './src/screens/SplashScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { TouchableOpacity } from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/material-design-icons';
-import ReceiveSharingIntent from "react-native-receive-sharing-intent";
-import {savePhotoToLocal} from "./src/api/utils.ts";
+import ReactNativeBiometrics from "react-native-biometrics";
 
 const Stack = createNativeStackNavigator();
+const rnBiometrics = new ReactNativeBiometrics();
 
 export default function App() {
     const [chatReady, setChatReady] = useState(false);
     const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+    const [authenticated, setAuthenticated] = useState(false);
 
     useEffect(() => {
         const timeout = setTimeout(() => setMinTimeElapsed(true), 1000);
         return () => clearTimeout(timeout);
     }, []);
 
-    const showSplash = !chatReady || !minTimeElapsed;
+    useEffect(() => {
+        rnBiometrics.simplePrompt({ promptMessage: 'Authenticate to enter the app' })
+            .then(({ success }) => {
+                if (success) setAuthenticated(true);
+                else Alert.alert('Authentication failed');
+            })
+            .catch(() => {
+                Alert.alert('Biometrics not available');
+            });
+    }, []);
+
+    const showSplash = !chatReady || !minTimeElapsed || !authenticated;
+
 
     return (
         <SafeAreaProvider>
