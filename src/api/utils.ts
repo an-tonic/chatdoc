@@ -1,9 +1,10 @@
 import RNFS from "react-native-fs";
 
-export const savePhotoToLocal = async (uri: string) => {
-    const extension = uri.substring(uri.lastIndexOf(".") + 1);
+
+export const savePhotoToLocal = async (filePath: string) => {
+    const extension = filePath.substring(filePath.lastIndexOf(".") + 1);
     const destPath = `${RNFS.ExternalDirectoryPath}/photo_${Date.now()}.${extension}`;
-    await RNFS.copyFile(uri, destPath);
+    await RNFS.copyFile(filePath, destPath);
     console.log(destPath)
     return destPath
 };

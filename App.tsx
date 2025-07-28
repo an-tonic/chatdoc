@@ -22,25 +22,6 @@ export default function App() {
         return () => clearTimeout(timeout);
     }, []);
 
-    useEffect(() => {
-        console.log("test")
-        ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
-
-                const savedPath = await savePhotoToLocal(files[0].contentUri)
-                console.log("hey", savedPath)
-                // addImage(savedPath)
-            },
-            (error: any) => {
-                console.log(error);
-            },
-            'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
-        );
-
-        return () => {
-            ReceiveSharingIntent.clearReceivedFiles();
-        };
-    }, []);
-
     const showSplash = !chatReady || !minTimeElapsed;
 
     return (
