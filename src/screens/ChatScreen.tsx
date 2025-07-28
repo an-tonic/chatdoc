@@ -58,23 +58,23 @@ function ChatScreen({onReady}: Props) {
         };
     }, []);
 
-
-    useEffect(() => {
-        ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
-
-                const savedPath = await savePhotoToLocal(files[0].contentUri)
-                addImage(savedPath)
-            },
-            (error: any) => {
-                console.log(error);
-            },
-            'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
-        );
-
-        return () => {
-            ReceiveSharingIntent.clearReceivedFiles();
-        };
-    }, []);
+    // useEffect(() => {
+    //     ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
+    //
+    //             const savedPath = await savePhotoToLocal(files[0].contentUri)
+    //             console.log("hey")
+    //             addImage(savedPath)
+    //         },
+    //         (error: any) => {
+    //             console.log(error);
+    //         },
+    //         'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
+    //     );
+    //
+    //     return () => {
+    //         ReceiveSharingIntent.clearReceivedFiles();
+    //     };
+    // }, []);
 
 
     const inputBarRef = useRef<InputBarHandle>(null);
@@ -257,6 +257,7 @@ function ChatScreen({onReady}: Props) {
                 value={inputText}
                 onChangeText={setInputText}
                 onPressAttachFiles={handlePaperclipPress}
+                onPressRecord={()=>{}}
                 onPressSendMessage={async () => {
                     if (pinnedImagePath) {
                         await handleNewEmbedding(inputText);

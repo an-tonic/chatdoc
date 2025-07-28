@@ -12,6 +12,7 @@ const InputBar = forwardRef<InputBarHandle, {
     value: string,
     onChangeText: (value: string | ((prevState: string) => string)) => void,
     onPressAttachFiles: () => void,
+    onPressRecord: () => void,
     onPressSendMessage: () => Promise<void>,
     context: any
 }>((props, ref) => {
@@ -34,12 +35,17 @@ const InputBar = forwardRef<InputBarHandle, {
             numberOfLines={4}
             textAlignVertical="top"
         />
-        <TouchableOpacity onPress={props.onPressAttachFiles} style={styles.iconButton}>
+        <TouchableOpacity
+            onPress={props.onPressAttachFiles}
+            style={styles.iconButton}>
+
             <Icon name="paperclip" size={24} color="#818181"/>
         </TouchableOpacity>
 
         <TouchableOpacity
+            onPress={props.onPressRecord}
             style={styles.iconButton}>
+
             <Icon name="microphone-outline" size={24} color="#818181"/>
         </TouchableOpacity>
 

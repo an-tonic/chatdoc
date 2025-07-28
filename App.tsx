@@ -8,6 +8,8 @@ import SplashScreen from './src/screens/SplashScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 import Icon from '@react-native-vector-icons/material-design-icons';
+import ReceiveSharingIntent from "react-native-receive-sharing-intent";
+import {savePhotoToLocal} from "./src/api/utils.ts";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +20,25 @@ export default function App() {
     useEffect(() => {
         const timeout = setTimeout(() => setMinTimeElapsed(true), 1000);
         return () => clearTimeout(timeout);
+    }, []);
+
+    useEffect(() => {
+        console.log("test")
+        ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
+
+                const savedPath = await savePhotoToLocal(files[0].contentUri)
+                console.log("hey", savedPath)
+                // addImage(savedPath)
+            },
+            (error: any) => {
+                console.log(error);
+            },
+            'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
+        );
+
+        return () => {
+            ReceiveSharingIntent.clearReceivedFiles();
+        };
     }, []);
 
     const showSplash = !chatReady || !minTimeElapsed;
