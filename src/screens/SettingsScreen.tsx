@@ -25,9 +25,10 @@ function SettingsScreen() {
     const [progress, setProgress] = useState<number>(0);
     const [dbInstance, setDbInstance] = useState<any>(null);
 
-    const model = "nomic-ai/nomic-embed-text-v1.5-GGUF";
+    const embeddingModel = "nomic-ai/nomic-embed-text-v1.5-GGUF";
+    const whisperModel = "ggerganov/whisper.cpp";
 
-    const handleDownloadModel = async (file: string) => {
+    const handleDownloadModel = async (model: string, file: string) => {
         const downloadUrl = `https://huggingface.co/${model}/resolve/main/${file}`;
 
         setIsDownloading(true);
@@ -87,9 +88,14 @@ function SettingsScreen() {
         <SafeAreaView style={{flex: 1, padding: 20}}>
 
             <TouchableOpacity style={styles.defaultButton} onPress={() => {
-                void handleDownloadModel("nomic-embed-text-v1.5.Q8_0.gguf");
+                void handleDownloadModel(embeddingModel, "nomic-embed-text-v1.5.Q8_0.gguf");
             }}>
-                <Text style={styles.buttonText}>Download Model</Text>
+                <Text style={styles.buttonText}>Download Embed Model</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.defaultButton} onPress={() => {
+                void handleDownloadModel(whisperModel, "ggml-large-v3.bin");
+            }}>
+                <Text style={styles.buttonText}>Download Whisper Model</Text>
             </TouchableOpacity>
             {isDownloading && <ProgressBar progress={progress}/>}
 

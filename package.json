@@ -20,13 +20,15 @@
     "lottie-react-native": "^7.2.4",
     "react": "19.1.0",
     "react-native": "0.80.0",
+    "react-native-audio-record": "^0.2.2",
     "react-native-biometrics": "^3.0.1",
     "react-native-fs": "^2.20.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-receive-sharing-intent": "^2.0.0",
     "react-native-safe-area-context": "^5.5.1",
-    "react-native-screens": "^4.11.1"
+    "react-native-screens": "^4.11.1",
+    "whisper.rn": "^0.4.3"
   },
   "op-sqlite": {
     "sqliteVec": true,

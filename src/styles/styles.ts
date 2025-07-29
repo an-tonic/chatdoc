@@ -6,7 +6,6 @@ export const styles = StyleSheet.create({
     container: {padding: 20},
 
 
-
     pinnedImageBubble: {
         borderWidth: 2,
         borderColor: '#0b43d6',
@@ -84,7 +83,7 @@ export const styles = StyleSheet.create({
         marginBottom: 10,
     },
 
-    dangerButton:{
+    dangerButton: {
         backgroundColor: '#ff0000',
         padding: 10,
         borderRadius: 5,
@@ -100,7 +99,7 @@ export const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-end',
         marginBottom: 0,
-        paddingBottom: 0,
+        padding: 5,
         borderWidth: 0,
         overflow: 'hidden',
         backgroundColor: '#e1e0e0'
@@ -108,15 +107,18 @@ export const styles = StyleSheet.create({
 
     input: {
         flex: 1,
-        paddingLeft: 15,
+        paddingLeft: 10,
         fontSize: 18
     },
 
     iconButton: {
         backgroundColor: 'rgba(0,0,0,0)',
-        paddingRight: 15,
-        paddingBottom: 10
+        padding: 8,
+
+        justifyContent: 'center',
+        alignItems: 'center',
     },
+
 
     scrollDownButton: {
         position: 'absolute',

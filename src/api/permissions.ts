@@ -22,3 +22,33 @@ export async function requestStoragePermissions() {
     }
     return true;
 }
+
+export async function requestRecordPermissions() {
+    if (Platform.OS === 'android') {
+        try {
+            const granted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                {
+                    title: 'Audio Recording Permission',
+                    message: 'This app needs access to your microphone to record audio.',
+                    buttonNeutral: 'Ask Me Later',
+                    buttonNegative: 'Cancel',
+                    buttonPositive: 'OK',
+                }
+            );
+
+            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+
+                console.log('Recording permission granted');
+                return true;
+            } else {
+                console.log('Recording permission denied');
+                return false;
+            }
+        } catch (err) {
+            console.warn(err);
+            return false;
+        }
+    }
+    return false;
+}

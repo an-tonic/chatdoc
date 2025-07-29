@@ -8,8 +8,13 @@ import PhotoPicker from "../components/PhotoPicker.tsx"; // File system module
 import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
 import {savePhotoToLocal} from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
-import {loadModel} from "../api/model.ts";
+import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
+import {releaseAllWhisper} from "whisper.rn";
+import {requestRecordPermissions} from "../api/permissions.ts";
+
+import AudioRecord from 'react-native-audio-record';
+import RNFS from 'react-native-fs';
 
 type Props = {
     onReady: () => void;
@@ -46,8 +51,10 @@ function ChatScreen({onReady}: Props) {
             `);
             setDbInstance(db);
 
-            const newContext = await loadModel("nomic-embed-text-v1.5.Q8_0.gguf", context);
-            setContext(newContext);
+            const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
+            setLlamaContext(newLlamaContext);
+            const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
+            setWhisperContext(newWhisperContext);
             onReady();
         };
 
@@ -55,6 +62,7 @@ function ChatScreen({onReady}: Props) {
 
         return () => {
             void releaseAllLlama();
+            void releaseAllWhisper();
         };
     }, []);
 
@@ -75,19 +83,65 @@ function ChatScreen({onReady}: Props) {
         };
     }, []);
 
+    useEffect(() => {
+        AudioRecord.init({
+            sampleRate: 16000,
+            channels: 1,
+            bitsPerSample: 16,
+            audioSource: 6,
+            wavFile: 'temp_recording.wav',
+        });
+    }, []);
 
     const inputBarRef = useRef<InputBarHandle>(null);
     const scrollViewRef = useRef<ScrollView>(null);
 
-    const [context, setContext] = useState<any>(null);
+    const [llamaContext, setLlamaContext] = useState<any>(null);
+    const [whisperContext, setWhisperContext] = useState<any>(null);
     const [inputText, setInputText] = useState<string>('');
     const [dbInstance, setDbInstance] = useState<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [pinnedImagePath, setPinnedImagePath] = useState<string | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
 
     const handlePaperclipPress = () => setPickerVisible(true);
+
+    const tmpPath = `${RNFS.TemporaryDirectoryPath}_recording.m4a`;
+
+
+
+    const handleRecordPress = async () => {
+        if (isRecording) {
+            const internalPath = await AudioRecord.stop();
+            setIsRecording(false);
+            console.log('Saved to app storage:', internalPath);
+
+            if (whisperContext) {
+                const { stop, promise } = whisperContext.transcribe(internalPath, {
+                    language: 'auto',
+                });
+                const { result } = await promise;
+                if(pinnedImagePath){
+                    setInputText(result);
+                } else {
+                    void handleSendMessage(result);
+
+                }
+
+                RNFS.unlink(internalPath).catch(() => {});
+            }
+        } else {
+            await requestRecordPermissions();
+
+            AudioRecord.start();
+            setIsRecording(true);
+            console.log('Started recording...');
+        }
+    };
+
+
 
     const handlePhotoSelected = (path: string) => {
         addImage(path);
@@ -103,16 +157,17 @@ function ChatScreen({onReady}: Props) {
     };
 
 
+
     const handleSendMessage = async (text: string) => {
-        if (!context) {
+        if (!llamaContext) {
             Alert.alert('Model Not Loaded', 'Please load the model first.');
             return;
         }
 
         try {
             setMessages(prev => [...prev, {type: 'text', text: text, source: 'user'}]);
-            const result = await context.embedding(text);
-            await context.embedding("");
+            const result = await llamaContext.embedding(text);
+            await llamaContext.embedding("");
             const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
             if (foundDocument) {
 
@@ -137,7 +192,7 @@ function ChatScreen({onReady}: Props) {
     };
 
     const handleNewEmbedding = async (text: string) => {
-        if (!context) {
+        if (!llamaContext) {
             Alert.alert('Model Not Loaded', 'Please load the model first.');
             return;
         }
@@ -152,7 +207,7 @@ function ChatScreen({onReady}: Props) {
         );
         setInputText("")
         setPinnedImagePath("")
-        const result = await context.embedding(text);
+        const result = await llamaContext.embedding(text);
         await updateEmbeddingByPath(dbInstance, imageUri, result.embedding, text);
 
     };
@@ -256,7 +311,7 @@ function ChatScreen({onReady}: Props) {
                 value={inputText}
                 onChangeText={setInputText}
                 onPressAttachFiles={handlePaperclipPress}
-                onPressRecord={()=>{}}
+                onPressRecord={handleRecordPress}
                 onPressSendMessage={async () => {
                     if (pinnedImagePath) {
                         await handleNewEmbedding(inputText);
@@ -264,7 +319,7 @@ function ChatScreen({onReady}: Props) {
                         await handleSendMessage(inputText);
                     }
                 }}
-                context={context}
+                isRecording={isRecording}
             />
 
 

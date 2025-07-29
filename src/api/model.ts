@@ -1,6 +1,7 @@
 import RNFS from "react-native-fs";
 import {Alert} from "react-native";
 import {initLlama, releaseAllLlama} from "llama.rn";
+import { initWhisper, releaseAllWhisper } from 'whisper.rn';
 
 export const downloadModel = async (
     modelName: string,
@@ -48,7 +49,7 @@ export const downloadModel = async (
 }
 
 
-export const loadModel = async (modelName: string, context: any) => {
+export const loadLlamaModel = async (modelName: string, context: any) => {
 
     try {
         const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
@@ -73,6 +74,36 @@ export const loadModel = async (modelName: string, context: any) => {
         return llamaContext;
     } catch (error) {
         Alert.alert('Error Loading Model', error instanceof Error ? error.message : 'An unknown error occurred.');
+        return null;
+    }
+};
+
+
+export const loadWhisperModel = async (modelName: string, context: any) => {
+
+    try {
+        const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
+        const fileExists = await RNFS.exists(destPath);
+
+        if (!fileExists) {
+            Alert.alert('Error Loading Whisper Model', 'The model file does not exist.');
+            return null;
+        }
+
+        if (context) {
+            await releaseAllWhisper();
+            return null
+        }
+
+        console.log('Initializing Whisper...');
+        const whisperContext = await initWhisper({
+            filePath: destPath
+        });
+
+        console.log('Model loaded successfully');
+        return whisperContext;
+    } catch (error) {
+        Alert.alert('Error Loading Whisper Model', error instanceof Error ? error.message : 'An unknown error occurred.');
         return null;
     }
 };

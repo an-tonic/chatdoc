@@ -14,7 +14,7 @@ const InputBar = forwardRef<InputBarHandle, {
     onPressAttachFiles: () => void,
     onPressRecord: () => void,
     onPressSendMessage: () => Promise<void>,
-    context: any
+    isRecording: boolean
 }>((props, ref) => {
     const inputRef = useRef<TextInput>(null);
 
@@ -44,10 +44,16 @@ const InputBar = forwardRef<InputBarHandle, {
 
         <TouchableOpacity
             onPress={props.onPressRecord}
-            style={styles.iconButton}>
-
-            <Icon name="microphone-outline" size={24} color="#818181"/>
+            style={[
+                styles.iconButton,
+                props.isRecording && {
+                    backgroundColor: 'rgb(184,201,248)',
+                    borderRadius: 34,
+                }
+            ]}>
+            <Icon name="microphone-outline" size={24} color={props.isRecording ? "#0b43d6" : "#818181"}/>
         </TouchableOpacity>
+
 
 
         <TouchableOpacity
