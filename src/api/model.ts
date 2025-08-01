@@ -2,6 +2,7 @@ import RNFS from "react-native-fs";
 import {Alert} from "react-native";
 import {initLlama, releaseAllLlama} from "llama.rn";
 import {initWhisper, releaseAllWhisper} from 'whisper.rn';
+import {showModelNotice} from "../../App.tsx";
 
 export const downloadModel = async (
     modelName: string,
@@ -53,7 +54,7 @@ export const loadLlamaModel = async (modelName: string, context: any) => {
         const fileExists = await RNFS.exists(destPath);
 
         if (!fileExists) {
-            Alert.alert('Error Loading Llama Model', 'The model file does not exist.');
+            showModelNotice?.('Before continuing, download the Llama model. Tap here to open settings.');
             return null;
         }
 
@@ -83,9 +84,10 @@ export const loadWhisperModel = async (modelName: string, context: any) => {
         const fileExists = await RNFS.exists(destPath);
 
         if (!fileExists) {
-            Alert.alert('Error Loading Whisper Model', 'The model file does not exist.');
+            showModelNotice?.('Before continuing, download the Whisper model. Tap here to open settings.');
             return null;
         }
+
 
         if (context) {
             await releaseAllWhisper();

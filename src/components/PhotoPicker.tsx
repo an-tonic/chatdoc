@@ -23,7 +23,7 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
         }
         const result = await launchCamera({mediaType: 'photo'});
         if (result.assets?.[0]?.uri) {
-            saveToLocal(result.assets[0].uri);
+            await saveToLocal(result.assets[0].uri);
         }
     };
 

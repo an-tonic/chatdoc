@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Alert, Text, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from "react-native-safe-area-context";
 import {styles} from "../styles/styles.ts";
-import {downloadModel, getModelMetadataFromHF} from "../api/model.ts";
+import {downloadModel} from "../api/model.ts";
 import ProgressBar from "../components/ProgressBar.tsx";
 import {open} from "@op-engineering/op-sqlite";
 
@@ -35,7 +35,7 @@ function SettingsScreen() {
         setProgress(0);
 
         try {
-            const destPath = await downloadModel(file, downloadUrl, progress =>
+            await downloadModel(file, downloadUrl, progress =>
                 setProgress(progress),
             );
 

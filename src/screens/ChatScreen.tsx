@@ -50,10 +50,8 @@ function ChatScreen({onReady}: Props) {
             `);
             setDbInstance(db);
 
-            const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
-            setLlamaContext(newLlamaContext);
-            // const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
-            // setWhisperContext(newWhisperContext);
+            void initLlama();
+            // void initWhisper();
 
             AudioRecord.init({
                 sampleRate: 16000,
@@ -104,8 +102,18 @@ function ChatScreen({onReady}: Props) {
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
 
-    const handlePaperclipPress = () => setPickerVisible(true);
+    const initLlama = async () => {
+        const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
+        if (newLlamaContext) setLlamaContext(newLlamaContext);
+    };
 
+    const initWhisper = async () => {
+        const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
+        if (newWhisperContext) setWhisperContext(newWhisperContext);
+    };
+
+
+    const handlePaperclipPress = () => setPickerVisible(true);
 
     const handleRecordStart = async () => {
         const granted = await requestRecordPermissions();
@@ -129,6 +137,9 @@ function ChatScreen({onReady}: Props) {
         setIsRecording(false);
         console.log('Saved to app storage:', internalPath);
 
+        if (!whisperContext){
+            void initWhisper();
+        }
         if (whisperContext) {
             const { stop, promise } = whisperContext.transcribe(internalPath, {
                 language: 'auto',
@@ -162,7 +173,7 @@ function ChatScreen({onReady}: Props) {
 
     const handleSendMessage = async (text: string) => {
         if (!llamaContext) {
-            Alert.alert('Model Not Loaded', 'Please load the model first.');
+            void initLlama();
             return;
         }
 
@@ -317,6 +328,7 @@ function ChatScreen({onReady}: Props) {
                 onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async () => {
                     if (pinnedImagePath) {
+                        console.log('s')
                         await handleNewEmbedding(inputText);
                     } else {
                         await handleSendMessage(inputText);
