@@ -328,7 +328,6 @@ function ChatScreen({onReady}: Props) {
                 onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async () => {
                     if (pinnedImagePath) {
-                        console.log('s')
                         await handleNewEmbedding(inputText);
                     } else {
                         await handleSendMessage(inputText);

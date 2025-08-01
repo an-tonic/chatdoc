@@ -8,6 +8,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import ReactNativeBiometrics from "react-native-biometrics";
+import {t} from "./src/languages/i18n";
 
 const Stack = createNativeStackNavigator();
 const rnBiometrics = new ReactNativeBiometrics();
@@ -49,7 +50,7 @@ export default function App() {
         <SafeAreaProvider>
             <View style={{flex: 1}}>
                 <NavigationContainer ref={navigationRef}>
-                <Stack.Navigator initialRouteName="Chat">
+                <Stack.Navigator initialRouteName={t('chatPage')}>
                         <Stack.Screen
                             name="Chat"
                             options={({navigation}) => ({
