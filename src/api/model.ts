@@ -1,7 +1,7 @@
 import RNFS from "react-native-fs";
 import {Alert} from "react-native";
 import {initLlama, releaseAllLlama} from "llama.rn";
-import { initWhisper, releaseAllWhisper } from 'whisper.rn';
+import {initWhisper, releaseAllWhisper} from 'whisper.rn';
 
 export const downloadModel = async (
     modelName: string,
@@ -10,14 +10,11 @@ export const downloadModel = async (
 ): Promise<string> => {
     const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
     try {
-        // Check if the destination path is valid
         if (!modelName || !modelUrl) {
             throw new Error('Invalid model name or URL');
         }
 
         const fileExists = await RNFS.exists(destPath);
-
-        // If it exists, delete it
         if (fileExists) {
             await RNFS.unlink(destPath);
             console.log(`Deleted existing file at ${destPath}`);
@@ -31,7 +28,7 @@ export const downloadModel = async (
             begin: (res) => {
                 console.log("Download started:", res);
             },
-            progress: ({ bytesWritten, contentLength }: { bytesWritten: number; contentLength: number }) => {
+            progress: ({bytesWritten, contentLength}: { bytesWritten: number; contentLength: number }) => {
                 const progress = (bytesWritten / contentLength) * 100;
                 console.log("Download progress:", progress);
                 onProgress(Math.floor(progress));
@@ -56,7 +53,7 @@ export const loadLlamaModel = async (modelName: string, context: any) => {
         const fileExists = await RNFS.exists(destPath);
 
         if (!fileExists) {
-            Alert.alert('Error Loading Model', 'The model file does not exist.');
+            Alert.alert('Error Loading Llama Model', 'The model file does not exist.');
             return null;
         }
 

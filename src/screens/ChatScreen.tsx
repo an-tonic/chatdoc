@@ -12,7 +12,6 @@ import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
 import {releaseAllWhisper} from "whisper.rn";
 import {requestRecordPermissions} from "../api/permissions.ts";
-
 import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 
@@ -53,8 +52,17 @@ function ChatScreen({onReady}: Props) {
 
             const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
             setLlamaContext(newLlamaContext);
-            const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
-            setWhisperContext(newWhisperContext);
+            // const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
+            // setWhisperContext(newWhisperContext);
+
+            AudioRecord.init({
+                sampleRate: 16000,
+                channels: 1,
+                bitsPerSample: 16,
+                audioSource: 6,
+                wavFile: 'temp_recording.wav',
+            });
+
             onReady();
         };
 
@@ -83,16 +91,6 @@ function ChatScreen({onReady}: Props) {
         };
     }, []);
 
-    useEffect(() => {
-        AudioRecord.init({
-            sampleRate: 16000,
-            channels: 1,
-            bitsPerSample: 16,
-            audioSource: 6,
-            wavFile: 'temp_recording.wav',
-        });
-    }, []);
-
     const inputBarRef = useRef<InputBarHandle>(null);
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -108,39 +106,43 @@ function ChatScreen({onReady}: Props) {
 
     const handlePaperclipPress = () => setPickerVisible(true);
 
-    const tmpPath = `${RNFS.TemporaryDirectoryPath}_recording.m4a`;
 
+    const handleRecordStart = async () => {
+        const granted = await requestRecordPermissions();
 
-
-    const handleRecordPress = async () => {
-        if (isRecording) {
-            const internalPath = await AudioRecord.stop();
-            setIsRecording(false);
-            console.log('Saved to app storage:', internalPath);
-
-            if (whisperContext) {
-                const { stop, promise } = whisperContext.transcribe(internalPath, {
-                    language: 'auto',
-                });
-                const { result } = await promise;
-                if(pinnedImagePath){
-                    setInputText(result);
-                } else {
-                    void handleSendMessage(result);
-
-                }
-
-                RNFS.unlink(internalPath).catch(() => {});
-            }
-        } else {
-            await requestRecordPermissions();
-
-            AudioRecord.start();
-            setIsRecording(true);
-            console.log('Started recording...');
+        if (!granted) {
+            Alert.alert(
+                'Microphone Permission Required',
+                'Please enable microphone access in your device settings to record audio.'
+            );
+            return;
         }
+
+        AudioRecord.start();
+        setIsRecording(true);
+        console.log('Started recording...');
     };
 
+
+    const handleRecordStop = async () => {
+        const internalPath = await AudioRecord.stop();
+        setIsRecording(false);
+        console.log('Saved to app storage:', internalPath);
+
+        if (whisperContext) {
+            const { stop, promise } = whisperContext.transcribe(internalPath, {
+                language: 'auto',
+            });
+            const { result } = await promise;
+            if (pinnedImagePath) {
+                setInputText(result);
+            } else {
+                void handleSendMessage(result);
+            }
+
+            RNFS.unlink(internalPath).catch(() => {});
+        }
+    };
 
 
     const handlePhotoSelected = (path: string) => {
@@ -311,7 +313,8 @@ function ChatScreen({onReady}: Props) {
                 value={inputText}
                 onChangeText={setInputText}
                 onPressAttachFiles={handlePaperclipPress}
-                onPressRecord={handleRecordPress}
+                onRecordPressIn={handleRecordStart}
+                onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async () => {
                     if (pinnedImagePath) {
                         await handleNewEmbedding(inputText);

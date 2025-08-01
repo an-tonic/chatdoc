@@ -15,23 +15,23 @@ const rnBiometrics = new ReactNativeBiometrics();
 export default function App() {
     const [chatReady, setChatReady] = useState(false);
     const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-    const [authenticated, setAuthenticated] = useState(false);
+    const [authenticated, setAuthenticated] = useState(true);
 
     useEffect(() => {
         const timeout = setTimeout(() => setMinTimeElapsed(true), 1000);
         return () => clearTimeout(timeout);
     }, []);
 
-    useEffect(() => {
-        rnBiometrics.simplePrompt({ promptMessage: 'Authenticate to enter the app' })
-            .then(({ success }) => {
-                if (success) setAuthenticated(true);
-                else Alert.alert('Authentication failed');
-            })
-            .catch(() => {
-                Alert.alert('Biometrics not available');
-            });
-    }, []);
+    // useEffect(() => {
+    //     rnBiometrics.simplePrompt({ promptMessage: 'Authenticate to enter the app' })
+    //         .then(({ success }) => {
+    //             if (success) setAuthenticated(true);
+    //             else Alert.alert('Authentication failed');
+    //         })
+    //         .catch(() => {
+    //             Alert.alert('Biometrics not available');
+    //         });
+    // }, []);
 
     const showSplash = !chatReady || !minTimeElapsed || !authenticated;
 

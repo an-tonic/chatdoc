@@ -114,10 +114,20 @@ export const styles = StyleSheet.create({
     iconButton: {
         backgroundColor: 'rgba(0,0,0,0)',
         padding: 8,
-
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'visible',
     },
+
+    recordingBackground: {
+        position: 'absolute',
+        width: 80, // larger than the touchable
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(11,67,214,0.2)', // translucent fill
+        zIndex: -1,
+    },
+
 
 
     scrollDownButton: {

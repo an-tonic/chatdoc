@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Alert, Text, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from "react-native-safe-area-context";
 import {styles} from "../styles/styles.ts";
-import {downloadModel} from "../api/model.ts";
+import {downloadModel, getModelMetadataFromHF} from "../api/model.ts";
 import ProgressBar from "../components/ProgressBar.tsx";
 import {open} from "@op-engineering/op-sqlite";
 
@@ -39,15 +39,14 @@ function SettingsScreen() {
                 setProgress(progress),
             );
 
-            if (destPath) {
-                //await loadModel(file);
-            }
+            return true;
         } catch (error) {
             const errorMessage =
                 error instanceof Error
                     ? error.message
                     : 'Download failed due to an unknown error.';
             Alert.alert('Error', errorMessage);
+            return false;
         } finally {
             setIsDownloading(false);
         }
@@ -83,7 +82,6 @@ function SettingsScreen() {
     };
 
 
-
     return (
         <SafeAreaView style={{flex: 1, padding: 20}}>
 
@@ -93,7 +91,8 @@ function SettingsScreen() {
                 <Text style={styles.buttonText}>Download Embed Model</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.defaultButton} onPress={() => {
-                void handleDownloadModel(whisperModel, "ggml-large-v3.bin");
+                void handleDownloadModel(whisperModel, "ggml-tiny.bin");
+
             }}>
                 <Text style={styles.buttonText}>Download Whisper Model</Text>
             </TouchableOpacity>
