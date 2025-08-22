@@ -15,23 +15,16 @@ import {requestRecordPermissions} from "../api/permissions.ts";
 import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 import {t} from '../languages/i18n';
+import {BarIndicator,} from 'react-native-indicators';
 
 type Props = {
     onReady: () => void;
 };
 
 type Message =
-    | {
-    type: 'text';
-    text: string;
-    source: 'user' | 'search';
-}
-    | {
-    type: 'image';
-    uri: string;
-    description: string;
-    source: 'user' | 'search';
-};
+    | { type: 'text'; text: string; source: 'user' | 'search' }
+    | { type: 'image'; uri: string; description: string; source: 'user' | 'search' }
+    | { type: 'loading'; source: 'user' | 'search' };
 
 
 function ChatScreen({onReady}: Props) {
@@ -123,6 +116,9 @@ function ChatScreen({onReady}: Props) {
     const handlePaperclipPress = () => setPickerVisible(true);
 
     const handleRecordStart = async () => {
+        if (!whisperContext) {
+            void initWhisper();
+        }
         const granted = await requestRecordPermissions();
 
         if (!granted) {
@@ -142,24 +138,34 @@ function ChatScreen({onReady}: Props) {
     const handleRecordStop = async () => {
         const internalPath = await AudioRecord.stop();
         setIsRecording(false);
-        console.log('Saved to app storage:', internalPath);
 
-        if (!whisperContext) {
-            void initWhisper();
-        }
-        if (whisperContext) {
-            const {stop, promise} = whisperContext.transcribe(internalPath, {
-                language: 'auto',
-            });
-            const {result} = await promise;
-            if (result == "[BLANK_AUDIO]") return;
+        try {
 
-            if (pinnedImagePath) {
-                setInputText(result);
-            } else {
-                void handleSendMessage(result);
+            if (!whisperContext) {
+                await initWhisper();
+                return;
             }
 
+            if (!pinnedImagePath) {
+                setMessages(prev => [...prev, {type: 'loading', source: 'user'}]);
+            }
+
+            const {promise} = whisperContext.transcribe(internalPath, {language: 'auto'});
+            const {result} = await promise;
+
+            if (result !== "[BLANK_AUDIO]") {
+                if (pinnedImagePath) {
+                    setInputText(result);
+                } else {
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        const idx = updated.findIndex(m => m.type === 'loading' && m.source === 'user');
+                        if (idx !== -1) updated[idx] = {type: 'text', text: result, source: 'user'};
+                        return updated;
+                    });
+                }
+            }
+        } finally {
             RNFS.unlink(internalPath).catch(() => {
             });
         }
@@ -316,6 +322,13 @@ function ChatScreen({onReady}: Props) {
                                 <Text style={styles.textMessage}>{msg.text}</Text>
                             </View>
                         );
+                    } else if (msg.type === 'loading') {
+                        return (
+                            <View key={index} style={[styles.textBubble,
+                                msg.source === "search" ? styles.msgLeft : styles.msgRight, {height: 41.5}]}>
+                                <BarIndicator count={15} size={10}/>
+                            </View>
+                        );
                     } else {
                         return null;
                     }
@@ -349,7 +362,6 @@ function ChatScreen({onReady}: Props) {
                 }}
                 isRecording={isRecording}
             />
-
 
             <PhotoPicker
                 visible={pickerVisible}

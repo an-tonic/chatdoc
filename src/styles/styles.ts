@@ -47,7 +47,7 @@ export const styles = StyleSheet.create({
         borderRadius: 10,
         marginVertical: 4,
         maxWidth: '80%',
-        alignSelf: 'flex-end', // or 'flex-start' for received messages
+        // alignSelf: 'flex-end',
     },
     textMessage: {
         fontSize: 16,

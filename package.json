@@ -25,6 +25,7 @@
     "react-native-biometrics": "^3.0.1",
     "react-native-fs": "^2.20.0",
     "react-native-image-picker": "^8.2.1",
+    "react-native-indicators": "^0.17.0",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-receive-sharing-intent": "^2.0.0",
     "react-native-safe-area-context": "^5.5.1",
