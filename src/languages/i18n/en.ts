@@ -12,6 +12,7 @@ const en = {
     downloadFailed: 'Download failed due to an unknown error.',
     deletionFailed: 'Deletion failed due to an unknown error.',
     chatPage: 'Chat',
+    welcomeText: 'Hi! Start typing or use voice to find your documents.'
 };
 
 export default en;

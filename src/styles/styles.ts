@@ -5,6 +5,18 @@ const screenWidth = Dimensions.get('window').width;
 export const styles = StyleSheet.create({
     container: {padding: 20},
 
+    welcomeText: {
+        fontSize: 17,
+        color: '#7e7e7e',
+        fontWeight: 'thin',
+        fontFamily: 'Roboto',
+        lineHeight: 30,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        height: 300,
+        paddingHorizontal: 50
+    },
+
 
     pinnedImageBubble: {
         borderWidth: 2,
@@ -127,7 +139,6 @@ export const styles = StyleSheet.create({
         backgroundColor: 'rgba(11,67,214,0.2)', // translucent fill
         zIndex: -1,
     },
-
 
 
     scrollDownButton: {

@@ -14,6 +14,7 @@ import {releaseAllWhisper} from "whisper.rn";
 import {requestRecordPermissions} from "../api/permissions.ts";
 import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
+import {t} from '../languages/i18n';
 
 type Props = {
     onReady: () => void;
@@ -104,12 +105,18 @@ function ChatScreen({onReady}: Props) {
 
     const initLlama = async () => {
         const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
-        if (newLlamaContext) setLlamaContext(newLlamaContext);
+
+        if (!newLlamaContext) return false;
+        setLlamaContext(newLlamaContext);
+        return true;
     };
 
     const initWhisper = async () => {
         const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
-        if (newWhisperContext) setWhisperContext(newWhisperContext);
+
+        if (!newWhisperContext) return false;
+        setWhisperContext(newWhisperContext);
+        return true;
     };
 
 
@@ -137,21 +144,24 @@ function ChatScreen({onReady}: Props) {
         setIsRecording(false);
         console.log('Saved to app storage:', internalPath);
 
-        if (!whisperContext){
+        if (!whisperContext) {
             void initWhisper();
         }
         if (whisperContext) {
-            const { stop, promise } = whisperContext.transcribe(internalPath, {
+            const {stop, promise} = whisperContext.transcribe(internalPath, {
                 language: 'auto',
             });
-            const { result } = await promise;
+            const {result} = await promise;
+            if (result == "[BLANK_AUDIO]") return;
+
             if (pinnedImagePath) {
                 setInputText(result);
             } else {
                 void handleSendMessage(result);
             }
 
-            RNFS.unlink(internalPath).catch(() => {});
+            RNFS.unlink(internalPath).catch(() => {
+            });
         }
     };
 
@@ -170,11 +180,12 @@ function ChatScreen({onReady}: Props) {
     };
 
 
-
     const handleSendMessage = async (text: string) => {
+
         if (!llamaContext) {
-            void initLlama();
-            return;
+            const isLlama = await initLlama();
+
+            if (!isLlama) return;
         }
 
         try {
@@ -283,6 +294,8 @@ function ChatScreen({onReady}: Props) {
                 }}
                 scrollEventThrottle={30}
             >
+                {messages.length === 0 && <Text style={styles.welcomeText}>{t('welcomeText')}</Text>}
+
                 {messages.map((msg, index) => {
                     if (msg.type === 'image') {
                         return (
@@ -299,7 +312,7 @@ function ChatScreen({onReady}: Props) {
                     } else if (msg.type === 'text') {
                         return (
                             <View key={index} style={[styles.textBubble,
-                                msg.source === "search" ? styles. msgLeft : styles. msgRight]}>
+                                msg.source === "search" ? styles.msgLeft : styles.msgRight]}>
                                 <Text style={styles.textMessage}>{msg.text}</Text>
                             </View>
                         );
@@ -330,6 +343,7 @@ function ChatScreen({onReady}: Props) {
                     if (pinnedImagePath) {
                         await handleNewEmbedding(inputText);
                     } else {
+
                         await handleSendMessage(inputText);
                     }
                 }}
