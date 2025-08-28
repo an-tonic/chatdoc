@@ -48,7 +48,7 @@ const InputBar = forwardRef<InputBarHandle, {
         </TouchableOpacity>
 
         <TouchableOpacity
-            onPressIn={() => {
+            onLongPress={() => {
                 Vibration.vibrate(20);
                 props.onRecordPressIn?.();
             }}

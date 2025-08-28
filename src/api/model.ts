@@ -71,7 +71,8 @@ export const loadLlamaModel = async (modelName: string, context: any) => {
         console.log('Model loaded successfully');
         return llamaContext;
     } catch (error) {
-        Alert.alert('Error Loading Model', error instanceof Error ? error.message : 'An unknown error occurred.');
+        showModelNotice?.(`Error loading Llama! ${error instanceof Error ? error.message : 'An unknown error occurred.'}. Try re-downloading the model.`);
+        // Alert.alert('Error Llama Loading Model', error instanceof Error ? error.message : 'An unknown error occurred.');
         return null;
     }
 };
@@ -99,10 +100,11 @@ export const loadWhisperModel = async (modelName: string, context: any) => {
             filePath: destPath
         });
 
-        console.log('Model loaded successfully');
+        console.log('Model loaded successfully', whisperContext);
         return whisperContext;
     } catch (error) {
-        Alert.alert('Error Loading Whisper Model', error instanceof Error ? error.message : 'An unknown error occurred.');
+        showModelNotice?.(`Error loading Whisper! ${error instanceof Error ? error.message : 'An unknown error occurred.'}. Try re-downloading the model.`);
+        // Alert.alert('Error Loading Whisper Model', error instanceof Error ? error.message : 'An unknown error occurred.');
         return null;
     }
 };

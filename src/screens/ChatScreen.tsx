@@ -112,7 +112,6 @@ function ChatScreen({onReady}: Props) {
         return true;
     };
 
-
     const handlePaperclipPress = () => setPickerVisible(true);
 
     const handleRecordStart = async () => {
@@ -134,12 +133,28 @@ function ChatScreen({onReady}: Props) {
         console.log('Started recording...');
     };
 
+    function substituteLastMessage(text: string) {
+        setMessages(prev => prev.slice(0, -1));
+        setMessages(prev => [
+            ...prev,
+            {type: 'text', text: text, source: 'search'},
+        ]);
+    }
 
     const handleRecordStop = async () => {
         const internalPath = await AudioRecord.stop();
         setIsRecording(false);
 
         try {
+            const stat = await RNFS.stat(internalPath);
+            console.log('size (bytes):', stat.size);
+            if (stat.size <= 44) {
+                setMessages(prev => [
+                    ...prev,
+                    {type: 'text', text: t('tooShortAudio'), source: 'search'},
+                ]);
+                return;
+            }
 
             if (!whisperContext) {
                 await initWhisper();
@@ -150,10 +165,13 @@ function ChatScreen({onReady}: Props) {
                 setMessages(prev => [...prev, {type: 'loading', source: 'user'}]);
             }
 
-            const {promise} = whisperContext.transcribe(internalPath, {language: 'auto'});
-            const {result} = await promise;
+            const {promise} = whisperContext.transcribe(internalPath, {language: 'en'});
+            let {result} = await promise;
+            result = result.trim();
 
-            if (result !== "[BLANK_AUDIO]") {
+            if (result === "[BLANK_AUDIO]" || result === "[INAUDIBLE]") {
+                substituteLastMessage(t('badAudioMessage'));
+            } else {
                 if (pinnedImagePath) {
                     setInputText(result);
                 } else {
@@ -163,6 +181,7 @@ function ChatScreen({onReady}: Props) {
                         if (idx !== -1) updated[idx] = {type: 'text', text: result, source: 'user'};
                         return updated;
                     });
+                    await runEmbeddingSearch(result);
                 }
             }
         } finally {
@@ -187,37 +206,37 @@ function ChatScreen({onReady}: Props) {
 
 
     const handleSendMessage = async (text: string) => {
-
         if (!llamaContext) {
-            const isLlama = await initLlama();
-
-            if (!isLlama) return;
+            const ok = await initLlama();
+            if (!ok) return;
         }
-
         try {
-            setMessages(prev => [...prev, {type: 'text', text: text, source: 'user'}]);
-            const result = await llamaContext.embedding(text);
-            await llamaContext.embedding("");
-            const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
-            if (foundDocument) {
+            setMessages(prev => [...prev, {type: 'text', text, source: 'user'}]);
+            await runEmbeddingSearch(text);
+            setInputText("");
+        } catch (err) {
+            Alert.alert("Error During Inference", err instanceof Error ? err.message : "Unknown error");
+        }
+    };
 
-                scrollViewRef.current?.scrollToEnd();
-                const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
+    const runEmbeddingSearch = async (text: string) => {
+        const result = await llamaContext.embedding(text);
+        await llamaContext.embedding("");
+        const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
 
-                const text = `Found this document (${confidence.toFixed(1)}%): `
-                setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
-                addImage(foundDocument.path, foundDocument.description, 'search')
-
-            } else {
-                const text = "Sorry, could not find any matching documents."
-                setMessages(prev => [...prev, {type: 'text', text: text, source: 'search'}]);
-            }
-            setInputText("")
-        } catch (error) {
-            Alert.alert(
-                'Error During Inference',
-                error instanceof Error ? error.message : 'An unknown error occurred.',
-            );
+        if (foundDocument) {
+            scrollViewRef.current?.scrollToEnd();
+            const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
+            setMessages(prev => [
+                ...prev,
+                {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
+            ]);
+            addImage(foundDocument.path, foundDocument.description, 'search');
+        } else {
+            setMessages(prev => [
+                ...prev,
+                {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
+            ]);
         }
     };
 

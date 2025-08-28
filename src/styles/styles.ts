@@ -36,17 +36,18 @@ export const styles = StyleSheet.create({
 
 
     chatContainer: {
-        padding: 10,
-        gap: 10,
+        padding: 5,
+        gap: 3,
         flexDirection: 'column',
     },
 
     textBubble: {
         backgroundColor: '#e3e2e2',
-        padding: 10,
-        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 4,
         marginVertical: 4,
-        maxWidth: '80%',
+        maxWidth: '85%',
         // alignSelf: 'flex-end',
     },
     textMessage: {
@@ -57,8 +58,8 @@ export const styles = StyleSheet.create({
     imageBubble: {
         alignSelf: 'flex-end',
         backgroundColor: '#eae9e9',
-        borderRadius: 12,
-        padding: 5,
+        borderRadius: 4,
+        padding: 3,
         width: screenWidth * 0.6,
 
     },
@@ -79,7 +80,7 @@ export const styles = StyleSheet.create({
     image: {
         width: '100%',
         height: '100%',
-        borderRadius: 10,
+        borderRadius: 4,
     },
     imageDescription: {
         color: '#555',
