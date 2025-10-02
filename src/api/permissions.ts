@@ -1,4 +1,4 @@
-import {PermissionsAndroid, Platform} from 'react-native';
+import {Alert, PermissionsAndroid, Platform} from 'react-native';
 
 
 export async function requestCameraPermissions() {

@@ -1,4 +1,4 @@
-import {Alert, Animated, ScrollView, Text, View} from 'react-native';
+import {Alert, Animated, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
@@ -16,6 +16,8 @@ import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 import {t} from '../languages/i18n';
 import {BarIndicator,} from 'react-native-indicators';
+// import NetInfo from '@react-native-community/netinfo';
+// import {syncUnsyncedDocuments} from "../api/sync.ts";
 
 type Props = {
     onReady: () => void;
@@ -23,7 +25,7 @@ type Props = {
 
 type Message =
     | { type: 'text'; text: string; source: 'user' | 'search' }
-    | { type: 'image'; uri: string; description: string; source: 'user' | 'search' }
+    | { type: 'image'; uri: string; description: string; source: 'user' | 'search'; serverID?: number }
     | { type: 'loading'; source: 'user' | 'search' };
 
 
@@ -37,10 +39,18 @@ function ChatScreen({onReady}: Props) {
                 name: "documents.db",
                 location: "../files/databases"
             });
-
+            // @formatter:off
             await db.execute(`
-              CREATE VIRTUAL TABLE IF NOT EXISTS embeddings
-              USING vec0(embedding float[768], image_path TEXT, description TEXT);
+                CREATE TABLE IF NOT EXISTS embeddings
+                (
+                    id integer primary key, image_path TEXT,
+                    description TEXT, 
+                    synced INTEGER DEFAULT 0, 
+                    embedding float [768] 
+                    check (
+                        embedding IS NULL or (typeof(embedding) == 'blob'and vec_length(embedding) == 768)
+                    )
+                );
             `);
             setDbInstance(db);
 
@@ -70,7 +80,7 @@ function ChatScreen({onReady}: Props) {
         ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
                 const savedPath = await savePhotoToLocal(files[0].filePath)
 
-                addImage(savedPath)
+                addImageToUI(savedPath)
             },
             (error: any) => {
                 console.log(error);
@@ -95,6 +105,33 @@ function ChatScreen({onReady}: Props) {
     const [pinnedImagePath, setPinnedImagePath] = useState<string | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const executeSQL = async (sql: string) => {
+        try {
+            const result = await dbInstance.execute(sql);
+            console.log('SQL result:', result.rows);
+        } catch (err) {
+            console.error('SQL error:', err);
+        }
+    };
+    // useEffect(() => {
+    //     let timeout: NodeJS.Timeout | null = null;
+    //
+    //     const unsubscribe = NetInfo.addEventListener(state => {
+    //         if (state.isConnected) {
+    //             // debounce reconnection to avoid rapid toggles
+    //             if (timeout) clearTimeout(timeout);
+    //             timeout = setTimeout(() => {
+    //                 syncUnsyncedDocuments(dbInstance);
+    //             }, 2000);
+    //         }
+    //     });
+    //
+    //     return () => {
+    //         if (timeout) clearTimeout(timeout);
+    //         unsubscribe();
+    //     };
+    // }, [dbInstance]);
+
 
     const initLlama = async () => {
         const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
@@ -190,16 +227,43 @@ function ChatScreen({onReady}: Props) {
         }
     };
 
+    // const uploadPhotoToServer = async (filePath: string, description: string = "") => {
+    //     try {
+    //         const uri = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
+    //         const formData = new FormData();
+    //         formData.append('image', {
+    //             uri,
+    //             name: uri.split('/').pop(),
+    //             type: 'image/jpeg', // you can detect mime type if needed
+    //         });
+    //         formData.append('description', description);
+    //
+    //         const response = await fetch('http://107.172.80.108:3000/upload', {
+    //             method: 'POST',
+    //             body: formData,
+    //             headers: {
+    //                 'Content-Type': 'multipart/form-data',
+    //             },
+    //         });
+    //
+    //         const data = await response.json();
+    //         console.log('Upload response:', response);
+    //         return data;
+    //     } catch (err) {
+    //         console.error('Upload failed', err);
+    //     }
+    // };
 
     const handlePhotoSelected = (path: string) => {
-        addImage(path);
+        const uri = path.startsWith('file://') ? path : `file://${path}`;
+        addImageToUI(uri);
         inputBarRef.current?.focus();
         scrollViewRef.current?.scrollToEnd();
+        insertNewImage(dbInstance, uri);
     };
 
 
-    const addImage = (path: string, description: string = "...", source: 'user' | 'search' = 'user') => {
-        const uri = path.startsWith('file://') ? path : `file://${path}`;
+    const addImageToUI = (uri: string, description: string = "...", source: 'user' | 'search' = 'user') => {
         setMessages(prev => [...prev, {type: 'image', uri, description, source}]);
         setPinnedImagePath(source === 'user' ? uri : null);
     };
@@ -231,7 +295,7 @@ function ChatScreen({onReady}: Props) {
                 ...prev,
                 {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
             ]);
-            addImage(foundDocument.path, foundDocument.description, 'search');
+            addImageToUI(foundDocument.path, foundDocument.description, 'search');
         } else {
             setMessages(prev => [
                 ...prev,
@@ -261,46 +325,72 @@ function ChatScreen({onReady}: Props) {
 
     };
 
-    async function updateEmbeddingByPath(db: DB, imagePath: string, newEmbedding: number[], newDescription: string) {
-        const newEmbed = JSON.stringify(newEmbedding)
-        const updateResult = await db.execute(
-            `UPDATE embeddings
-             SET embedding   = ?,
-                 description = ?
-             WHERE image_path = ?`,
-            [newEmbed, newDescription, imagePath]
-        );
-
-        if (updateResult.rowsAffected === 0) {
+    async function insertNewImage(db: DB, imagePath: string) {
+        try {
             await db.execute(
-                `INSERT INTO embeddings (embedding, image_path, description)
-                 VALUES (?, ?, ?)`,
-                [newEmbed, imagePath, newDescription]
+                `INSERT INTO embeddings (image_path)
+                 VALUES (?)`,
+                [imagePath]
             );
+        } catch (err) {
+            console.error('SQL error:', err);
         }
 
     }
 
-    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 10) {
+    async function updateEmbeddingByPath(db: DB, imagePath: string, newEmbedding: number[], newDescription: string) {
+        console.log(newEmbedding)
 
-        const results = await db.execute(
-            `SELECT description, image_path, distance
-             FROM embeddings
-             WHERE embedding MATCH ?
-             ORDER BY distance LIMIT ?`,
-            [JSON.stringify(embedding), limit]
-        );
-        console.log(results);
-        if (results.rows.length > 0) {
-            const description = results.rows[0].description?.toString() || "";
-            const path = results.rows[0].image_path?.toString()
-            const distance = results.rows[0].distance?.toString() || "";
-            if (path) {
-                return {path, description, distance}
+        try {
+            const updateResult = await db.execute(
+                `UPDATE embeddings
+                 SET embedding   = ?,
+                     description = ?
+                 WHERE image_path = ?`,
+                [new Float32Array(newEmbedding), newDescription, imagePath]
+            );
+
+            console.log(updateResult)
+            if (updateResult.rowsAffected === 0) {
+                await db.execute(
+                    `INSERT INTO embeddings (embedding, image_path, description)
+                     VALUES (?, ?, ?)`,
+                    [new Float32Array(newEmbedding), imagePath, newDescription]
+                );
+
             }
+        } catch (err) {
+            console.error('SQL error:', err);
+        }
+
+
+    }
+
+    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 10) {
+        try{
+            const results = await db.execute(
+                `SELECT 
+                description, 
+                image_path,
+                vec_distance_cosine(embedding, ?) as distance
+            FROM embeddings
+            WHERE embedding IS NOT NULL
+            ORDER BY distance LIMIT ?`,
+                [new Float32Array(embedding), limit]
+            );
+
+            if (results.rows.length > 0) {
+                const description = results.rows[0].description?.toString() || "";
+                const path = results.rows[0].image_path?.toString()
+                const distance = results.rows[0].distance?.toString() || "";
+                if (path) {
+                    return {path, description, distance}
+                }
+            }
+        }  catch (err) {
+            console.error('SQL error:', err);
         }
         return null
-
     }
 
 
@@ -363,7 +453,13 @@ function ChatScreen({onReady}: Props) {
                 </View>
             )}
 
-
+            <TouchableOpacity
+                onPress={() => {
+                    executeSQL(inputText)
+                }}
+            >
+                <Text>Execute SQL</Text>
+            </TouchableOpacity>
             <InputBar
                 ref={inputBarRef}
                 value={inputText}
