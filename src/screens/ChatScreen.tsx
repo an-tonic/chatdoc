@@ -2,11 +2,10 @@ import {Alert, Animated, ScrollView, Text, TouchableOpacity, View} from 'react-n
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
-import {DB, open} from '@op-engineering/op-sqlite';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 import PhotoPicker from "../components/PhotoPicker.tsx"; // File system module
 import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
-import {savePhotoToLocal} from "../api/utils.ts";
+import {savePhotoToLocal, searchSimilarEmbedding, updateEmbeddingByID} from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
 import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
@@ -25,13 +24,25 @@ type Props = {
     onReady: () => void;
 };
 
+// @formatter:off
 type Message =
     | { type: 'text'; text: string; source: 'user' | 'search' }
-    | { type: 'image'; uri: string; description: string; source: 'user' | 'search'; serverID?: number }
+    | { databaseID: number; type: 'image'; uri: string; description: string; source: 'user' | 'search'; serverID?: number }
     | { type: 'loading'; source: 'user' | 'search' };
 
 
 function ChatScreen({onReady}: Props) {
+    console.log("ChatScreen Rendered!")
+    const inputBarRef = useRef<InputBarHandle>(null);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const [llamaContext, setLlamaContext] = useState<any>(null);
+    const [whisperContext, setWhisperContext] = useState<any>(null);
+    const [inputText, setInputText] = useState<string>('');
+    const [pickerVisible, setPickerVisible] = useState(false);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [pinnedImageID, setPinnedImageID] = useState<number | null>(null);
+    const [showScrollDownButton, setShowScrollDownButton] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
 
     // TODO: Fix this? null safety
     const dbInstance = useDB()!;
@@ -63,9 +74,9 @@ function ChatScreen({onReady}: Props) {
 
     useEffect(() => {
         ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
-                const savedPath = await savePhotoToLocal(files[0].filePath)
+                const {savedFileID, savedFilePath} = await savePhotoToLocal(dbInstance, files[0].filePath)
 
-                addImageToUI(savedPath)
+                addImageToUI(savedFileID, savedFilePath)
             },
             (error: any) => {
                 console.log(error);
@@ -78,26 +89,6 @@ function ChatScreen({onReady}: Props) {
         };
     }, []);
 
-    const inputBarRef = useRef<InputBarHandle>(null);
-    const scrollViewRef = useRef<ScrollView>(null);
-
-    const [llamaContext, setLlamaContext] = useState<any>(null);
-    const [whisperContext, setWhisperContext] = useState<any>(null);
-    const [inputText, setInputText] = useState<string>('');
-    const [dbInstance, setDbInstance] = useState<any>(null);
-    const [pickerVisible, setPickerVisible] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [pinnedImagePath, setPinnedImagePath] = useState<string | null>(null);
-    const [showScrollDownButton, setShowScrollDownButton] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
-    const executeSQL = async (sql: string) => {
-        try {
-            const result = await dbInstance.execute(sql);
-            console.log('SQL result:', result.rows);
-        } catch (err) {
-            console.error('SQL error:', err);
-        }
-    };
     // useEffect(() => {
     //     let timeout: NodeJS.Timeout | null = null;
     //
@@ -183,7 +174,7 @@ function ChatScreen({onReady}: Props) {
                 return;
             }
 
-            if (!pinnedImagePath) {
+            if (!pinnedImageID) {
                 setMessages(prev => [...prev, {type: 'loading', source: 'user'}]);
             }
 
@@ -194,7 +185,7 @@ function ChatScreen({onReady}: Props) {
             if (result === "[BLANK_AUDIO]" || result === "[INAUDIBLE]") {
                 substituteLastMessage(t('badAudioMessage'));
             } else {
-                if (pinnedImagePath) {
+                if (pinnedImageID) {
                     setInputText(result);
                 } else {
                     setMessages(prev => {
@@ -239,20 +230,18 @@ function ChatScreen({onReady}: Props) {
     //     }
     // };
 
-    const handlePhotoSelected = (path: string) => {
-        const uri = path.startsWith('file://') ? path : `file://${path}`;
-        addImageToUI(uri);
+    const handlePhotoSelected = async (path: string) => {
+        const {savedFileID, savedFilePath} = await savePhotoToLocal(dbInstance, path)
+
+        addImageToUI(savedFileID, savedFilePath);
         inputBarRef.current?.focus();
         scrollViewRef.current?.scrollToEnd();
-        insertNewImage(dbInstance, uri);
     };
 
-
-    const addImageToUI = (uri: string, description: string = "...", source: 'user' | 'search' = 'user') => {
-        setMessages(prev => [...prev, {type: 'image', uri, description, source}]);
-        setPinnedImagePath(source === 'user' ? uri : null);
+    const addImageToUI = (id:number, uri: string, description: string = "...", source: 'user' | 'search' = 'user') => {
+        setMessages(prev => [...prev, {databaseID:id, type: 'image', uri, description, source}]);
+        setPinnedImageID(source === 'user' ? id : null);
     };
-
 
     const handleSendMessage = async (text: string) => {
         if (!llamaContext) {
@@ -280,7 +269,7 @@ function ChatScreen({onReady}: Props) {
                 ...prev,
                 {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
             ]);
-            addImageToUI(foundDocument.path, foundDocument.description, 'search');
+            addImageToUI(foundDocument.id, foundDocument.path, foundDocument.description, 'search');
         } else {
             setMessages(prev => [
                 ...prev,
@@ -294,90 +283,21 @@ function ChatScreen({onReady}: Props) {
             Alert.alert('Model Not Loaded', 'Please load the model first.');
             return;
         }
+        if (pinnedImageID == null) return;
 
-        const imageUri = pinnedImagePath || "Not Found";
         setMessages(prev =>
             prev.map(msg =>
-                msg.type === 'image' && msg.uri === pinnedImagePath
+                msg.type === 'image' && msg.databaseID === pinnedImageID
                     ? {...msg, description: text}
                     : msg
             )
         );
         setInputText("")
-        setPinnedImagePath("")
+
         const result = await llamaContext.embedding(text);
-        await updateEmbeddingByPath(dbInstance, imageUri, result.embedding, text);
-
+        await updateEmbeddingByID(dbInstance, pinnedImageID, result.embedding, text);
+        setPinnedImageID(null)
     };
-
-    async function insertNewImage(db: DB, imagePath: string) {
-        try {
-            await db.execute(
-                `INSERT INTO embeddings (image_path)
-                 VALUES (?)`,
-                [imagePath]
-            );
-        } catch (err) {
-            console.error('SQL error:', err);
-        }
-
-    }
-
-    async function updateEmbeddingByPath(db: DB, imagePath: string, newEmbedding: number[], newDescription: string) {
-        console.log(newEmbedding)
-
-        try {
-            const updateResult = await db.execute(
-                `UPDATE embeddings
-                 SET embedding   = ?,
-                     description = ?
-                 WHERE image_path = ?`,
-                [new Float32Array(newEmbedding), newDescription, imagePath]
-            );
-
-            console.log(updateResult)
-            if (updateResult.rowsAffected === 0) {
-                await db.execute(
-                    `INSERT INTO embeddings (embedding, image_path, description)
-                     VALUES (?, ?, ?)`,
-                    [new Float32Array(newEmbedding), imagePath, newDescription]
-                );
-
-            }
-        } catch (err) {
-            console.error('SQL error:', err);
-        }
-
-
-    }
-
-    async function searchSimilarEmbedding(db: DB, embedding: number[], limit: number = 10) {
-        try{
-            const results = await db.execute(
-                `SELECT 
-                description, 
-                image_path,
-                vec_distance_cosine(embedding, ?) as distance
-            FROM embeddings
-            WHERE embedding IS NOT NULL
-            ORDER BY distance LIMIT ?`,
-                [new Float32Array(embedding), limit]
-            );
-
-            if (results.rows.length > 0) {
-                const description = results.rows[0].description?.toString() || "";
-                const path = results.rows[0].image_path?.toString()
-                const distance = results.rows[0].distance?.toString() || "";
-                if (path) {
-                    return {path, description, distance}
-                }
-            }
-        }  catch (err) {
-            console.error('SQL error:', err);
-        }
-        return null
-    }
-
 
     return (
         <SafeAreaView style={{flex: 1}}>
@@ -397,14 +317,16 @@ function ChatScreen({onReady}: Props) {
                 {messages.length === 0 && <Text style={styles.welcomeText}>{t('welcomeText')}</Text>}
 
                 {messages.map((msg, index) => {
+
                     if (msg.type === 'image') {
                         return (
                             <BubbleImage
                                 key={index}
                                 image={msg}
-                                pinnedImage={pinnedImagePath}
+                                pinnedImageID={pinnedImageID}
                                 onPress={() => {
-                                    setPinnedImagePath(prev => (prev === msg.uri ? null : msg.uri));
+                                    const id = msg.databaseID;
+                                    setPinnedImageID(prev => (prev === id ? null : id));
                                     setInputText(msg.description);
                                 }}
                             />
@@ -440,7 +362,7 @@ function ChatScreen({onReady}: Props) {
 
             <TouchableOpacity
                 onPress={() => {
-                    executeSQL(inputText)
+                    executeSQL(dbInstance, inputText)
                 }}
             >
                 <Text>Execute SQL</Text>
@@ -453,7 +375,7 @@ function ChatScreen({onReady}: Props) {
                 onRecordPressIn={handleRecordStart}
                 onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async () => {
-                    if (pinnedImagePath) {
+                    if (pinnedImageID) {
                         await handleNewEmbedding(inputText);
                     } else {
 
@@ -467,7 +389,7 @@ function ChatScreen({onReady}: Props) {
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
                 onPhotoSelected={handlePhotoSelected}
-            />
+                db={dbInstance}/>
         </SafeAreaView>
     );
 

@@ -1,19 +1,19 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, Alert} from 'react-native';
+import {Alert, Text, TouchableOpacity, View} from 'react-native';
 import Modal from 'react-native-modal';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {requestCameraPermissions, requestStoragePermissions} from "../api/permissions.ts";
-import {savePhotoToLocal} from "../api/utils.ts";
+import {DB} from "@op-engineering/op-sqlite";
 
 type Props = {
     visible: boolean;
     onClose: () => void;
-    onPhotoSelected: (localPath: string) => void;
+    onPhotoSelected: (filePath: string) => void;
+    db: DB;
 };
 
 
-
-export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) {
+export default function PhotoPicker({visible, onClose, onPhotoSelected, db}: Props) {
     const openCamera = async () => {
         onClose();
         const hasPermission = await requestCameraPermissions();
@@ -23,7 +23,7 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
         }
         const result = await launchCamera({mediaType: 'photo'});
         if (result.assets?.[0]?.uri) {
-            await saveToLocal(result.assets[0].uri);
+            onPhotoSelected(result.assets[0].uri);
         }
     };
 
@@ -36,19 +36,16 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
         }
         const result = await launchImageLibrary({mediaType: 'photo'});
         if (result.assets?.[0]?.uri) {
-            await saveToLocal(result.assets[0].uri);
-        }
-    };
 
-    const saveToLocal = async (uri: string) => {
-        const destPath = await savePhotoToLocal(uri)
-        onPhotoSelected(destPath);
+            onPhotoSelected(result.assets[0].uri);
+        }
     };
 
     return (
         <Modal isVisible={visible} onBackdropPress={onClose} style={{justifyContent: 'flex-end', margin: 0}}>
             <View style={{backgroundColor: 'white', padding: 20, borderTopLeftRadius: 12, borderTopRightRadius: 12}}>
-                <TouchableOpacity onPress={openCamera} style={{paddingVertical: 15, borderBottomWidth: 1, borderColor: '#eee'}}>
+                <TouchableOpacity onPress={openCamera}
+                                  style={{paddingVertical: 15, borderBottomWidth: 1, borderColor: '#eee'}}>
                     <Text style={{fontSize: 18, textAlign: 'center'}}>Take a Photo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={openGallery} style={{paddingVertical: 15}}>

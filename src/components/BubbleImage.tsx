@@ -4,16 +4,17 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 
 
 export default function BubbleImage(props: {
-    pinnedImage: string | null,
-    image: { uri: string; description: string, source: 'user' | 'search' }
+    pinnedImageID: number | null,
+    image: {id?:number, uri: string; description: string, source: 'user' | 'search' }
     onPress: () => void,
 }) {
+
     return <TouchableOpacity
 
         style={[
             styles.imageBubble,
             props.image.source === "search" ? styles.msgLeft : styles.msgRight,
-            props.pinnedImage === props.image.uri && styles.pinnedImageBubble
+            props.pinnedImageID === props.image.id && styles.pinnedImageBubble
         ]}
         onPress={props.onPress}
     >
@@ -23,7 +24,7 @@ export default function BubbleImage(props: {
                 style={styles.image}
                 resizeMode="cover"
             />
-            {props.pinnedImage === props.image.uri && (
+            {props.pinnedImageID === props.image.id && (
                 <View style={styles.pinIconOverlay}>
                     <Icon name="pin-outline" size={20} color="#0b43d6"/>
                 </View>
