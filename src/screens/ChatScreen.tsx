@@ -389,7 +389,7 @@ function ChatScreen({onReady}: Props) {
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
                 onPhotoSelected={handlePhotoSelected}
-                db={dbInstance}/>
+            />
         </SafeAreaView>
     );
 
