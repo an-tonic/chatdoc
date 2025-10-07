@@ -16,6 +16,8 @@ import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 import {t} from '../languages/i18n';
 import {BarIndicator,} from 'react-native-indicators';
+import {executeSQL} from "../api/dev_utils.ts";
+import {useDB} from "../context/DBContext.tsx";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -31,28 +33,11 @@ type Message =
 
 function ChatScreen({onReady}: Props) {
 
+    // TODO: Fix this? null safety
+    const dbInstance = useDB()!;
 
     useEffect(() => {
         const setup = async () => {
-
-            const db = open({
-                name: "documents.db",
-                location: "../files/databases"
-            });
-            // @formatter:off
-            await db.execute(`
-                CREATE TABLE IF NOT EXISTS embeddings
-                (
-                    id integer primary key, image_path TEXT,
-                    description TEXT, 
-                    synced INTEGER DEFAULT 0, 
-                    embedding float [768] 
-                    check (
-                        embedding IS NULL or (typeof(embedding) == 'blob'and vec_length(embedding) == 768)
-                    )
-                );
-            `);
-            setDbInstance(db);
 
             void initLlama();
             // void initWhisper();

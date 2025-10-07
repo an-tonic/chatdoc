@@ -9,6 +9,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import ReactNativeBiometrics from "react-native-biometrics";
 import {t} from "./src/languages/i18n";
+import {DBProvider} from './src/context/DBContext';
 
 const Stack = createNativeStackNavigator();
 const rnBiometrics = new ReactNativeBiometrics();
@@ -33,8 +34,8 @@ export default function App() {
 
     useEffect(() => {
         if (authenticated) return
-        rnBiometrics.simplePrompt({ promptMessage: 'Authenticate to enter the app' })
-            .then(({ success }) => {
+        rnBiometrics.simplePrompt({promptMessage: 'Authenticate to enter the app'})
+            .then(({success}) => {
                 if (success) setAuthenticated(true);
                 else Alert.alert('Authentication failed');
             })
@@ -48,9 +49,9 @@ export default function App() {
 
     return (
         <SafeAreaProvider>
-            <View style={{flex: 1}}>
+            <DBProvider>
                 <NavigationContainer ref={navigationRef}>
-                <Stack.Navigator initialRouteName={t('chatPage')}>
+                    <Stack.Navigator initialRouteName={t('chatPage')}>
                         <Stack.Screen
                             name="Chat"
                             options={({navigation}) => ({
@@ -92,8 +93,7 @@ export default function App() {
                     <View style={StyleSheet.absoluteFill}>
                         <SplashScreen/>
                     </View>
-                )}
-            </View>
+                )}</DBProvider>
         </SafeAreaProvider>
     );
 }

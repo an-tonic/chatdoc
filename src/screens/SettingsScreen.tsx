@@ -6,28 +6,16 @@ import {downloadModel} from "../api/model.ts";
 import ProgressBar from "../components/ProgressBar.tsx";
 import {open} from "@op-engineering/op-sqlite";
 import {getLocale, setLocale, t} from '../languages/i18n';
+import {useDB} from "../context/DBContext.tsx";
+import {clearDatabase} from "../api/utils.ts";
 
 function SettingsScreen() {
-
-
-    useEffect(() => {
-        const setup = async () => {
-
-            const db = open({
-                name: "documents.db",
-                location: "../files/databases"
-            });
-            setDbInstance(db);
-        };
-        void setup();
-    }, []);
-
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
-    const [dbInstance, setDbInstance] = useState<any>(null);
     const [language, setLanguage] = useState(getLocale());
 
 
+    const dbInstance = useDB()!;
 
     const embeddingModel = "nomic-ai/nomic-embed-text-v1.5-GGUF";
     const whisperModel = "ggerganov/whisper.cpp";
@@ -75,16 +63,7 @@ function SettingsScreen() {
                     text: t('delete'),
                     style: 'destructive',
                     onPress: async () => {
-                        try {
-                            await dbInstance.execute(`DELETE FROM embeddings`);
-                            Alert.alert(t('success'), t('embeddingsDeleted'));
-                        } catch (error) {
-                            const errorMessage =
-                                error instanceof Error
-                                    ? error.message
-                                    : t('deletionFailed');
-                            Alert.alert(t('error'), errorMessage);
-                        }
+                        await clearDatabase(dbInstance);
                     },
                 },
             ]
