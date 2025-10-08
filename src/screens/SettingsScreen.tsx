@@ -1,13 +1,13 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {Alert, Text, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from "react-native-safe-area-context";
 import {styles} from "../styles/styles.ts";
 import {downloadModel} from "../api/model.ts";
 import ProgressBar from "../components/ProgressBar.tsx";
-import {open} from "@op-engineering/op-sqlite";
 import {getLocale, setLocale, t} from '../languages/i18n';
 import {useDB} from "../context/DBContext.tsx";
 import {clearDatabase} from "../api/utils.ts";
+import {syncUnsyncedDocuments} from "../api/sync.ts";
 
 function SettingsScreen() {
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
@@ -95,10 +95,17 @@ function SettingsScreen() {
 
             <TouchableOpacity style={styles.defaultButton} onPress={toggleLanguage}>
                 <Text style={styles.buttonText}>
-                    {language === 'en' ? 'Switch to Russian' : 'Переключить на английский'}
+                    {t('switchLanguage')}
                 </Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+                style={styles.defaultButton} onPress={() =>{
+                    void syncUnsyncedDocuments(dbInstance);
+                }}>
+                <Text style={styles.buttonText}>{t('syncDatabase')}</Text>
+
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }

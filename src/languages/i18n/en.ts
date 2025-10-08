@@ -15,6 +15,8 @@ const en = {
     welcomeText: 'Hi! Start typing or use voice to find your documents.',
     badAudioMessage: 'Audio was inaudible. Try again.',
     tooShortAudio: 'Audio too short. Try again.',
+    switchLanguage: 'Switch to Russian',
+    syncDatabase: 'Sync Database',
 };
 
 export default en;
