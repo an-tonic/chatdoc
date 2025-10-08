@@ -17,6 +17,7 @@ import {t} from '../languages/i18n';
 import {BarIndicator,} from 'react-native-indicators';
 import {executeSQL} from "../api/dev_utils.ts";
 import {useDB} from "../context/DBContext.tsx";
+import {ImageMessage} from "../types/types.ts";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -24,10 +25,11 @@ type Props = {
     onReady: () => void;
 };
 
+
 // @formatter:off
 type Message =
     | { type: 'text'; text: string; source: 'user' | 'search' }
-    | { databaseID: number; type: 'image'; uri: string; description: string; source: 'user' | 'search'; serverID?: number }
+    | ImageMessage
     | { type: 'loading'; source: 'user' | 'search' };
 
 
@@ -362,7 +364,7 @@ function ChatScreen({onReady}: Props) {
 
             <TouchableOpacity
                 onPress={() => {
-                    executeSQL(dbInstance, inputText)
+                    void executeSQL(dbInstance, inputText)
                 }}
             >
                 <Text>Execute SQL</Text>
