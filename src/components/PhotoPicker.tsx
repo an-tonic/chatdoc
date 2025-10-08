@@ -1,6 +1,6 @@
 import React from 'react';
 import {Alert, Text, TouchableOpacity, View} from 'react-native';
-import RNModal from 'react-native-modal';
+import Modal from 'react-native-modal';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {requestCameraPermissions, requestStoragePermissions} from "../api/permissions.ts";
 
@@ -40,7 +40,7 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
     };
 
     return (
-        <RNModal isVisible={visible} onBackdropPress={onClose} style={{justifyContent: 'flex-end', margin: 0}}>
+        <Modal isVisible={visible} onBackdropPress={onClose} style={{justifyContent: 'flex-end', margin: 0}}>
             <View style={{backgroundColor: 'white', padding: 20, borderTopLeftRadius: 12, borderTopRightRadius: 12}}>
                 <TouchableOpacity onPress={openCamera}
                                   style={{paddingVertical: 15, borderBottomWidth: 1, borderColor: '#eee'}}>
@@ -50,6 +50,6 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
                     <Text style={{fontSize: 18, textAlign: 'center'}}>Choose from Gallery</Text>
                 </TouchableOpacity>
             </View>
-        </RNModal>
+        </Modal>
     );
 }
