@@ -1,5 +1,5 @@
 import {DB} from "@op-engineering/op-sqlite";
-import {SERVER_URL, ServerDocument} from "../types/types.ts";
+import {SERVER_URL} from "../types/types.ts";
 
 
 export async function searchSimilarDocuments(embedding: any, topK: number = 5) {
