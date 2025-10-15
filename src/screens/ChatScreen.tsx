@@ -5,7 +5,13 @@ import {releaseAllLlama} from 'llama.rn';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 import PhotoPicker from "../components/PhotoPicker.tsx"; // File system module
 import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
-import {savePhotoToLocal, searchSimilarEmbedding, updateEmbeddingByID} from "../api/utils.ts";
+import {
+    doesFileExist,
+    saveFileFromLocalFS,
+    saveFileFromRemoteFS,
+    searchSimilarEmbedding,
+    updateMetadataByID
+} from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
 import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
@@ -18,6 +24,7 @@ import {BarIndicator,} from 'react-native-indicators';
 import {executeSQL} from "../api/dev_utils.ts";
 import {useDB} from "../context/DBContext.tsx";
 import {ImageMessage} from "../types/types.ts";
+import {searchSimilarDocuments} from "../api/sync.ts";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -76,7 +83,7 @@ function ChatScreen({onReady}: Props) {
 
     useEffect(() => {
         ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
-                const {savedFileID, savedFilePath} = await savePhotoToLocal(dbInstance, files[0].filePath)
+                const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, files[0].filePath)
 
                 addImageToUI(savedFileID, savedFilePath)
             },
@@ -233,7 +240,7 @@ function ChatScreen({onReady}: Props) {
     // };
 
     const handlePhotoSelected = async (path: string) => {
-        const {savedFileID, savedFilePath} = await savePhotoToLocal(dbInstance, path)
+        const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, path)
 
         addImageToUI(savedFileID, savedFilePath);
         inputBarRef.current?.focus();
@@ -241,7 +248,7 @@ function ChatScreen({onReady}: Props) {
     };
 
     const addImageToUI = (id:number, uri: string, description: string = "...", source: 'user' | 'search' = 'user') => {
-        setMessages(prev => [...prev, {databaseID:id, type: 'image', uri, description, source}]);
+        setMessages(prev => [...prev, {localDBID:id, type: 'image', uri, description, source}]);
         setPinnedImageID(source === 'user' ? id : null);
     };
 
@@ -262,22 +269,40 @@ function ChatScreen({onReady}: Props) {
     const runEmbeddingSearch = async (text: string) => {
         const result = await llamaContext.embedding(text);
         await llamaContext.embedding("");
-        const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
 
-        if (foundDocument) {
-            scrollViewRef.current?.scrollToEnd();
-            const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
-            setMessages(prev => [
-                ...prev,
-                {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
-            ]);
-            addImageToUI(foundDocument.id, foundDocument.path, foundDocument.description, 'search');
-        } else {
-            setMessages(prev => [
-                ...prev,
-                {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
-            ]);
+        const foundServerDocument = await searchSimilarDocuments(result.embedding, 1);
+        console.log(foundServerDocument);
+        if(foundServerDocument[0]) {
+            const fileExistsLocally = await doesFileExist(dbInstance, foundServerDocument[0].server_id)
+
+            if(!fileExistsLocally){
+                scrollViewRef.current?.scrollToEnd();
+
+                const {savedFileID, savedFilePath} = await saveFileFromRemoteFS(dbInstance, foundServerDocument[0]);
+
+                addImageToUI(savedFileID, savedFilePath, foundServerDocument[0].description || "", 'search');
+            } else {
+                const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
+                if (foundDocument) {
+                    scrollViewRef.current?.scrollToEnd();
+                    const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
+                    setMessages(prev => [
+                        ...prev,
+                        {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
+                    ]);
+                    addImageToUI(foundDocument.id, foundDocument.path, foundDocument.description, 'search');
+                } else {
+                    console.log("adding from local");
+                    setMessages(prev => [
+                        ...prev,
+                        {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
+                    ]);
+                }
+            }
+
         }
+
+
     };
 
     const handleNewEmbedding = async (text: string) => {
@@ -289,7 +314,7 @@ function ChatScreen({onReady}: Props) {
 
         setMessages(prev =>
             prev.map(msg =>
-                msg.type === 'image' && msg.databaseID === pinnedImageID
+                msg.type === 'image' && msg.localDBID === pinnedImageID
                     ? {...msg, description: text}
                     : msg
             )
@@ -297,7 +322,7 @@ function ChatScreen({onReady}: Props) {
         setInputText("")
 
         const result = await llamaContext.embedding(text);
-        await updateEmbeddingByID(dbInstance, pinnedImageID, result.embedding, text);
+        await updateMetadataByID(dbInstance, pinnedImageID, null, text, result.embedding);
         setPinnedImageID(null)
     };
 
@@ -327,7 +352,7 @@ function ChatScreen({onReady}: Props) {
                                 image={msg}
                                 pinnedImageID={pinnedImageID}
                                 onPress={() => {
-                                    const id = msg.databaseID;
+                                    const id = msg.localDBID;
                                     setPinnedImageID(prev => (prev === id ? null : id));
                                     setInputText(msg.description);
                                 }}
@@ -362,13 +387,15 @@ function ChatScreen({onReady}: Props) {
                 </View>
             )}
 
-            <TouchableOpacity
-                onPress={() => {
-                    void executeSQL(dbInstance, inputText)
-                }}
-            >
-                <Text>Execute SQL</Text>
-            </TouchableOpacity>
+            {__DEV__ && (
+                <TouchableOpacity
+                    onPress={() => {
+                        void executeSQL(dbInstance, inputText)
+                    }}
+                >
+                    <Text>Execute SQL</Text>
+                </TouchableOpacity>
+            )}
             <InputBar
                 ref={inputBarRef}
                 value={inputText}

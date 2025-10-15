@@ -15,7 +15,7 @@ export default function BubbleImage(props: {
         style={[
             styles.imageBubble,
             props.image.source === "search" ? styles.msgLeft : styles.msgRight,
-            props.pinnedImageID === props.image.databaseID && styles.pinnedImageBubble
+            props.pinnedImageID === props.image.localDBID && styles.pinnedImageBubble
         ]}
         onPress={props.onPress}
     >
@@ -25,7 +25,7 @@ export default function BubbleImage(props: {
                 style={styles.image}
                 resizeMode="cover"
             />
-            {props.pinnedImageID === props.image.databaseID && (
+            {props.pinnedImageID === props.image.localDBID && (
                 <View style={styles.pinIconOverlay}>
                     <Icon name="pin-outline" size={20} color="#0b43d6"/>
                 </View>

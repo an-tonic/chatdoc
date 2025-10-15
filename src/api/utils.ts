@@ -2,9 +2,57 @@ import RNFS from "react-native-fs";
 import {DB} from "@op-engineering/op-sqlite";
 import {Alert} from "react-native";
 import {t} from "../languages/i18n";
+import {SERVER_URL, ServerDocument} from "../types/types.ts";
 
 
-export const savePhotoToLocal = async (db: DB, filePath: string) => {
+export async function doesFileExist(db: DB, serverDocId: number): Promise<boolean> {
+    try {
+        const result = await db.execute(
+            `SELECT COUNT(*) as count FROM metadata WHERE server_doc_id = ?`,
+            [serverDocId]
+        );
+
+        const countValue = result.rows?.[0]?.count ?? 0;
+        const count = Number(countValue);
+        console.log(countValue, count);
+        return count > 0;
+
+    } catch (err) {
+        console.error('Failed to check metadata existence:', err);
+        return false;
+    }
+}
+
+export const saveFileFromRemoteFS = async (db: DB, doc: ServerDocument) => {
+    try {
+        const remoteUrl = SERVER_URL + doc.image_url;
+        const extension = remoteUrl.substring(remoteUrl.lastIndexOf('.') + 1);
+        const savedFilePath = `${RNFS.ExternalDirectoryPath}/photo_${Date.now()}.${extension}`;
+
+        const result = await RNFS.downloadFile({
+            fromUrl: remoteUrl,
+            toFile: savedFilePath,
+        }).promise;
+
+        if (result.statusCode !== 200) {
+            throw new Error(`Failed to download file: ${result.statusCode}`);
+        }
+
+        const uri = savedFilePath.startsWith('file://') ? savedFilePath : `file://${savedFilePath}`;
+        const savedFileID = await insertNewFile(db, uri, 1);
+        console.log(savedFileID, doc);
+        await updateMetadataByID(db, savedFileID, doc.server_id, doc.description, null, 1);
+        console.log('File saved to DB with id:', savedFileID);
+
+        return { savedFileID, savedFilePath: uri };
+    } catch (err) {
+        console.error('Failed to download or save remote file:', err);
+        return { savedFileID: -1, savedFilePath: '' };
+    }
+};
+
+
+export const saveFileFromLocalFS = async (db: DB, filePath: string) => {
 
     const extension = filePath.substring(filePath.lastIndexOf(".") + 1);
     const savedFilePath = `${RNFS.ExternalDirectoryPath}/photo_${Date.now()}.${extension}`;
@@ -18,12 +66,12 @@ export const savePhotoToLocal = async (db: DB, filePath: string) => {
     return {savedFileID, savedFilePath:uri}
 };
 
-async function insertNewFile(db: DB, filePath: string):Promise<number> {
+async function insertNewFile(db: DB, filePath: string, synced=0):Promise<number> {
     try {
         const insertResult = await db.execute(
             `INSERT OR IGNORE INTO documents (path, synced)
-                 VALUES (?, 0)`,
-            [filePath]
+                 VALUES (?, ?)`,
+            [filePath, synced]
         );
 
         if (insertResult.insertId) return insertResult.insertId;
@@ -62,27 +110,63 @@ export async function searchSimilarEmbedding(db: DB, embedding: number[], limit 
     return null;
 }
 
-export async function updateEmbeddingByID(db: DB, documentId: number, newEmbedding: number[], newDescription: string) {
+export async function updateMetadataByID(
+    db: DB,
+    localDBID: number,
+    serverDBID: number | null = null,
+    newDescription: string | null = null,
+    newEmbedding: number[] | null = null,
+    synced: number = 0
+) {
+
     try {
+        const fields: string[] = [];
+        const values: any[] = [];
 
-        const update = await db.execute(
-            `UPDATE metadata
-                 SET embedding = ?, description = ?, synced = 0
-                 WHERE document_id = ?`,
-            [new Float32Array(newEmbedding), newDescription, documentId]
-        );
+        if (serverDBID !== null) {
+            fields.push("server_doc_id = ?");
+            values.push(serverDBID);
+        }
 
-        if (update.rowsAffected === 0) {
+        if (newDescription !== null) {
+            fields.push("description = ?");
+            values.push(newDescription);
+        }
+
+        if (newEmbedding !== null) {
+            fields.push("embedding = ?");
+            values.push(new Float32Array(newEmbedding));
+        }
+
+        // Always include synced as a parameter to avoid string injection
+        fields.push("synced = ?");
+        values.push(synced);
+
+        // Add WHERE parameter last
+        values.push(localDBID);
+
+        const sql = `UPDATE metadata SET ${fields.join(", ")} WHERE document_id = ?`;
+        const result = await db.execute(sql, values);
+
+        if (result.rowsAffected === 0) {
             await db.execute(
-                `INSERT INTO metadata (document_id, embedding, description, synced)
-                     VALUES (?, ?, ?, 0)`,
-                [documentId, new Float32Array(newEmbedding), newDescription]
+                `INSERT INTO metadata (document_id, server_doc_id, description, embedding, synced)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [
+                    localDBID,
+                    serverDBID,
+                    newDescription,
+                    newEmbedding ? new Float32Array(newEmbedding) : null,
+                    synced
+                ]
             );
         }
+
     } catch (err) {
-        console.error('SQL error:', err);
+        console.error("SQL error:", err);
     }
 }
+
 
 export async function clearDatabase(db: DB) {
 

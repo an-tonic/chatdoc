@@ -1,29 +1,59 @@
 import {DB} from "@op-engineering/op-sqlite";
+import {SERVER_URL, ServerDocument} from "../types/types.ts";
 
-const SERVER_URL = "http://107.172.80.108:3000";
+
+export async function searchSimilarDocuments(embedding: any, topK: number = 5) {
+    try {
+
+
+        const res = await fetch(`${SERVER_URL}/search`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({embedding: JSON.stringify(embedding), topK: topK}),
+        });
+
+        if (!res.ok) {
+            throw new Error(`Search failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data.map((doc: any) => ({
+            server_id: doc.id,
+            image_url: doc.image_url,
+            description: doc.description,
+            distance: doc.distance,
+        }));
+
+    } catch (err) {
+        console.error("Search request failed:", err);
+        return [];
+    }
+}
+
 
 export async function syncUnsyncedDocuments(db: DB) {
     if (!db) return;
 
     try {
         // --- SYNC DOCUMENTS ---
+        // TODO - not sent files that were saved from server
         const unsyncedDocs =
             await db.execute(`SELECT *
                               FROM documents
                               WHERE synced = 0`);
 
-        for (const doc of unsyncedDocs.rows) {
+        for (const unsyncedDoc of unsyncedDocs.rows) {
             try {
-                if (!doc.path) {
-                    console.error("Could not sync this doc. Path missing?", doc)
+                if (!unsyncedDoc.path) {
+                    console.error("Could not sync this doc. Path missing?", unsyncedDoc)
                     continue;
                 }
 
                 const formData = new FormData();
-                const fileName = String(doc.path).split('/').pop();
+                const fileName = String(unsyncedDoc.path).split('/').pop();
 
                 formData.append('image', {
-                    uri: doc.path,
+                    uri: unsyncedDoc.path,
                     name: fileName,
                     type: 'image/jpeg',
                 } as any);
@@ -35,20 +65,30 @@ export async function syncUnsyncedDocuments(db: DB) {
                         'Content-Type': 'multipart/form-data',
                     },
                 });
+                const server_data = await res.json();
+                console.log('Uploaded document file:', server_data);
 
                 if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
                 await db.execute(`UPDATE documents
                                   SET synced = 1
-                                  WHERE id = ${doc.id}`);
+                                  WHERE id = ${unsyncedDoc.id}`
+                );
+
+                await db.execute(`UPDATE metadata
+                                  SET server_doc_id = ${server_data.id}
+                                  WHERE document_id = ${unsyncedDoc.id}`
+                );
 
             } catch (err) {
-                console.error(`Failed to sync document id ${doc.id}:`, err);
+                console.error(`Failed to sync document id ${unsyncedDoc.id}:`, err);
             }
         }
         console.log("Finished uploading docs");
         // --- SYNC METADATA ---
         const unsyncedMeta =
-            await db.execute(`SELECT * FROM metadata WHERE synced = 0`);
+            await db.execute(`SELECT *
+                              FROM metadata
+                              WHERE synced = 0`);
 
         for (const meta of unsyncedMeta.rows) {
             try {
@@ -61,7 +101,7 @@ export async function syncUnsyncedDocuments(db: DB) {
                 const res = await fetch(`${SERVER_URL}/embed`, {
                     method: 'POST',
                     body: JSON.stringify({
-                        id: meta.document_id,
+                        id: meta.server_doc_id,
                         embedding: floatArray,
                         description: meta.description,
                     }),
@@ -69,9 +109,11 @@ export async function syncUnsyncedDocuments(db: DB) {
                         'Content-Type': 'application/json',
                     },
                 });
-
+                console.log(res, meta.server_doc_id);
                 if (!res.ok) throw new Error(`Embed update failed with status ${res.status}`);
-                await db.execute(`UPDATE metadata SET synced = 1 WHERE id = ${meta.id}`);
+                await db.execute(`UPDATE metadata
+                                  SET synced = 1
+                                  WHERE id = ${meta.id}`);
             } catch (err) {
                 console.error(`Failed to sync metadata id ${meta.id}:`, err);
             }

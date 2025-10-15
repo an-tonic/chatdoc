@@ -29,6 +29,7 @@ export const DBProvider = ({children}: {children: React.ReactNode}) => {
                 CREATE TABLE IF NOT EXISTS metadata (
                   id INTEGER PRIMARY KEY,
                   document_id INTEGER NOT NULL,
+                  server_doc_id INTEGER NULL,
                   description TEXT,
                   embedding FLOAT[768],
                   synced INTEGER DEFAULT 0,
