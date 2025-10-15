@@ -16,6 +16,9 @@ export const DBProvider = ({children}: {children: React.ReactNode}) => {
                 name: 'documents.db',
                 location: '../files/databases',
             });
+
+            await instance.execute(`PRAGMA foreign_keys = ON;`);
+
             // @formatter:off
             await instance.execute(`
                 CREATE TABLE IF NOT EXISTS documents (

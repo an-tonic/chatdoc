@@ -88,7 +88,7 @@ export async function clearDatabase(db: DB) {
 
     try {
         await db.execute(`DELETE FROM documents`);
-        Alert.alert(t('success'), t('embeddingsDeleted'));
+        Alert.alert(t('success'), t('documentsDeleted'));
     } catch (error) {
         const errorMessage =
             error instanceof Error
