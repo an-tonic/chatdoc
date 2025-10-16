@@ -3,7 +3,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
-import PhotoPicker from "../components/PhotoPicker.tsx"; // File system module
+import PhotoPicker from "../components/PhotoPicker.tsx";
 import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
 import {
     doesFileExist,
@@ -46,12 +46,10 @@ function ChatScreen({onReady}: Props) {
     const scrollViewRef = useRef<ScrollView>(null);
     const [llamaContext, setLlamaContext] = useState<any>(null);
     const [whisperContext, setWhisperContext] = useState<any>(null);
-    const [inputText, setInputText] = useState<string>('');
     const [pickerVisible, setPickerVisible] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [pinnedImageID, setPinnedImageID] = useState<number | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
-    // const [isRecording, setIsRecording] = useState(false);
 
     // TODO: Fix this? null safety
     const dbInstance = useDB()!;
@@ -60,7 +58,6 @@ function ChatScreen({onReady}: Props) {
         const setup = async () => {
 
             void initLlama();
-            // void initWhisper();
 
             AudioRecord.init({
                 sampleRate: 16000,
@@ -150,15 +147,12 @@ function ChatScreen({onReady}: Props) {
         }
 
         AudioRecord.start();
-        // setIsRecording(true);
     };
 
 
     const handleRecordStop = async () => {
-        // if (!isRecording) return
 
         const internalPath = await AudioRecord.stop();
-        // setIsRecording(false);
 
         try {
             const stat = await RNFS.stat(internalPath);
@@ -192,7 +186,7 @@ function ChatScreen({onReady}: Props) {
                 substituteLastMessage(t('badAudioMessage'));
             } else {
                 if (pinnedImageID) {
-                    setInputText(result);
+                    inputBarRef.current?.setText(result);
                 } else {
                     setMessages(prev => {
                         const updated = [...prev];
@@ -237,7 +231,6 @@ function ChatScreen({onReady}: Props) {
         }
         try {
             setMessages(prev => [...prev, {type: 'text', text, source: 'user'}]);
-            setInputText("");
             await runEmbeddingSearch(text);
         } catch (err) {
             Alert.alert("Error During Inference", err instanceof Error ? err.message : "Unknown error");
@@ -297,7 +290,6 @@ function ChatScreen({onReady}: Props) {
                     : msg
             )
         );
-        setInputText("")
 
         const result = await llamaContext.embedding(text);
         await updateMetadataByID(dbInstance, pinnedImageID, null, text, result.embedding);
@@ -332,7 +324,7 @@ function ChatScreen({onReady}: Props) {
                                 onPress={() => {
                                     const id = msg.localDBID;
                                     setPinnedImageID(prev => (prev === id ? null : id));
-                                    setInputText(msg.description);
+                                    inputBarRef.current?.setText(msg.description);
                                 }}
                             />
                         );
@@ -368,7 +360,7 @@ function ChatScreen({onReady}: Props) {
             {__DEV__ && (
                 <TouchableOpacity
                     onPress={() => {
-                        void executeSQL(dbInstance, inputText)
+                        void executeSQL(dbInstance, inputBarRef.current?.getText() || "")
                     }}
                 >
                     <Text>Execute SQL</Text>
@@ -376,17 +368,14 @@ function ChatScreen({onReady}: Props) {
             )}
             <InputBar
                 ref={inputBarRef}
-                value={inputText}
-                onChangeText={setInputText}
                 onPressAttachFiles={handlePaperclipPress}
                 onRecordPressIn={handleRecordStart}
                 onRecordPressOut={handleRecordStop}
-                onPressSendMessage={async () => {
+                onPressSendMessage={async (text) => {
                     if (pinnedImageID) {
-                        await handleNewEmbedding(inputText);
+                        await handleNewEmbedding(text);
                     } else {
-
-                        await handleSendMessage(inputText);
+                        await handleSendMessage(text);
                     }
                 }}
             />
