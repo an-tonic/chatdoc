@@ -1,7 +1,7 @@
 import {TextInput, TouchableOpacity, Vibration, View} from "react-native";
 import {styles} from "../styles/styles.ts";
 import Icon from "@react-native-vector-icons/material-design-icons";
-import {forwardRef, useImperativeHandle, useRef} from "react";
+import {forwardRef, useImperativeHandle, useRef, useState} from "react";
 
 export type InputBarHandle = {
     focus: () => void
@@ -15,9 +15,11 @@ const InputBar = forwardRef<InputBarHandle, {
     onPressAttachFiles: () => void,
     onRecordPressIn?: () => void;
     onRecordPressOut?: () => void;
-    onPressSendMessage: () => Promise<void>,
-    isRecording: boolean
+    onPressSendMessage: () => Promise<void>
 }>((props, ref) => {
+
+    console.log("InputBar component Rendered!");
+    const [isRecording, setIsRecording] = useState(false);
     const inputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({
@@ -49,24 +51,27 @@ const InputBar = forwardRef<InputBarHandle, {
 
         <TouchableOpacity
             onLongPress={() => {
+                setIsRecording(true);
                 Vibration.vibrate(20);
                 props.onRecordPressIn?.();
             }}
 
             onPressOut={() => {
+                if(!isRecording) return;
+                setIsRecording(false);
                 Vibration.vibrate(5);
                 props.onRecordPressOut?.();
             }}
             style={styles.iconButton}
             activeOpacity={1}
         >
-            {props.isRecording && (
+            {isRecording && (
                 <View style={styles.recordingBackground}/>
             )}
             <Icon
                 name="microphone-outline"
                 size={24}
-                color={props.isRecording ? "#0b43d6" : "#818181"}
+                color={isRecording ? "#0b43d6" : "#818181"}
             />
         </TouchableOpacity>
 

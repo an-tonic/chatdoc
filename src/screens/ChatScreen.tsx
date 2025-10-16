@@ -16,7 +16,7 @@ import {styles} from "../styles/styles.ts";
 import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
 import {releaseAllWhisper} from "whisper.rn";
-import {requestRecordPermissions} from "../api/permissions.ts";
+import {checkRecordPermissions, requestRecordPermissions} from "../api/permissions.ts";
 import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 import {t} from '../languages/i18n';
@@ -51,7 +51,7 @@ function ChatScreen({onReady}: Props) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [pinnedImageID, setPinnedImageID] = useState<number | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
+    // const [isRecording, setIsRecording] = useState(false);
 
     // TODO: Fix this? null safety
     const dbInstance = useDB()!;
@@ -129,43 +129,36 @@ function ChatScreen({onReady}: Props) {
     const initWhisper = async () => {
         const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
 
-        if (!newWhisperContext) return false;
+        if (!newWhisperContext) return null;
         setWhisperContext(newWhisperContext);
-        return true;
+        return newWhisperContext;
     };
 
     const handlePaperclipPress = () => setPickerVisible(true);
 
     const handleRecordStart = async () => {
-        if (!whisperContext) {
-            void initWhisper();
-        }
-        const granted = await requestRecordPermissions();
-
+        const granted = await checkRecordPermissions();
         if (!granted) {
-            Alert.alert(
-                'Microphone Permission Required',
-                'Please enable microphone access in your device settings to record audio.'
-            );
+            const permission = await requestRecordPermissions();
+            if (!permission) {
+                Alert.alert(
+                    'Microphone Permission Required',
+                    'Please enable microphone access in your device settings to record audio.'
+                );
+            }
             return;
         }
 
         AudioRecord.start();
-        setIsRecording(true);
-        console.log('Started recording...');
+        // setIsRecording(true);
     };
 
-    function substituteLastMessage(text: string) {
-        setMessages(prev => prev.slice(0, -1));
-        setMessages(prev => [
-            ...prev,
-            {type: 'text', text: text, source: 'search'},
-        ]);
-    }
 
     const handleRecordStop = async () => {
+        // if (!isRecording) return
+
         const internalPath = await AudioRecord.stop();
-        setIsRecording(false);
+        // setIsRecording(false);
 
         try {
             const stat = await RNFS.stat(internalPath);
@@ -178,16 +171,20 @@ function ChatScreen({onReady}: Props) {
                 return;
             }
 
-            if (!whisperContext) {
-                await initWhisper();
-                return;
+            let context = whisperContext;
+            if (!context) {
+                context = await initWhisper();
+                if (!context) {
+                    Alert.alert("Error", "Failed to initialize Whisper model.");
+                    return;
+                }
+                setWhisperContext(context);
             }
 
             if (!pinnedImageID) {
                 setMessages(prev => [...prev, {type: 'loading', source: 'user'}]);
             }
-
-            const {promise} = whisperContext.transcribe(internalPath, {language: 'en'});
+            const {promise} = context.transcribe(internalPath, {language: 'en'});
             let {result} = await promise;
             result = result.trim();
 
@@ -212,32 +209,13 @@ function ChatScreen({onReady}: Props) {
         }
     };
 
-    // const uploadPhotoToServer = async (filePath: string, description: string = "") => {
-    //     try {
-    //         const uri = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
-    //         const formData = new FormData();
-    //         formData.append('image', {
-    //             uri,
-    //             name: uri.split('/').pop(),
-    //             type: 'image/jpeg', // you can detect mime type if needed
-    //         });
-    //         formData.append('description', description);
-    //
-    //         const response = await fetch('http://107.172.80.108:3000/upload', {
-    //             method: 'POST',
-    //             body: formData,
-    //             headers: {
-    //                 'Content-Type': 'multipart/form-data',
-    //             },
-    //         });
-    //
-    //         const data = await response.json();
-    //         console.log('Upload response:', response);
-    //         return data;
-    //     } catch (err) {
-    //         console.error('Upload failed', err);
-    //     }
-    // };
+    const substituteLastMessage = (text: string) => {
+        setMessages(prev => prev.slice(0, -1));
+        setMessages(prev => [
+            ...prev,
+            {type: 'text', text: text, source: 'search'},
+        ]);
+    }
 
     const handlePhotoSelected = async (path: string) => {
         const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, path)
@@ -259,8 +237,8 @@ function ChatScreen({onReady}: Props) {
         }
         try {
             setMessages(prev => [...prev, {type: 'text', text, source: 'user'}]);
-            await runEmbeddingSearch(text);
             setInputText("");
+            await runEmbeddingSearch(text);
         } catch (err) {
             Alert.alert("Error During Inference", err instanceof Error ? err.message : "Unknown error");
         }
@@ -340,7 +318,7 @@ function ChatScreen({onReady}: Props) {
                     setShowScrollDownButton(!isAtBottom);
                 }}
                 scrollEventThrottle={30}
-            >
+            >r
                 {messages.length === 0 && <Text style={styles.welcomeText}>{t('welcomeText')}</Text>}
 
                 {messages.map((msg, index) => {
@@ -411,7 +389,6 @@ function ChatScreen({onReady}: Props) {
                         await handleSendMessage(inputText);
                     }
                 }}
-                isRecording={isRecording}
             />
 
             <PhotoPicker

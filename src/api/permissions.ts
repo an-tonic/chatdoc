@@ -1,4 +1,4 @@
-import {Alert, PermissionsAndroid, Platform} from 'react-native';
+import {PermissionsAndroid, Platform} from 'react-native';
 
 
 export async function requestCameraPermissions() {
@@ -44,4 +44,19 @@ export async function requestRecordPermissions() {
         }
     }
     return false;
+}
+
+export async function checkRecordPermissions(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+        try {
+            return await PermissionsAndroid.check(
+                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+            );
+        } catch (err) {
+            console.warn('Permission check failed', err);
+            return false;
+        }
+    }
+
+    return true;
 }

@@ -35,8 +35,6 @@ export async function syncUnsyncedDocuments(db: DB) {
     if (!db) return;
 
     try {
-        // --- SYNC DOCUMENTS ---
-        // TODO - not sent files that were saved from server
         const unsyncedDocs =
             await db.execute(`SELECT *
                               FROM documents
