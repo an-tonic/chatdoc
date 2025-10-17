@@ -79,21 +79,26 @@ function ChatScreen({onReady}: Props) {
     }, []);
 
     useEffect(() => {
-        ReceiveSharingIntent.getReceivedFiles(async (files: any) => {
-                const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, files[0].filePath)
-
-                addImageToUI(savedFileID, savedFilePath)
-            },
-            (error: any) => {
-                console.log(error);
-            },
-            'ShareMedia' // share url protocol (must be unique to your app, suggest using your apple bundle id)
-        );
+        try {
+            ReceiveSharingIntent.getReceivedFiles(
+                async (files: any) => {
+                    if (files && files.length > 0) {
+                        const { savedFileID, savedFilePath } = await saveFileFromLocalFS(dbInstance, files[0].filePath);
+                        addImageToUI(savedFileID, savedFilePath);
+                    }
+                },
+                (error: any) => console.log(error),
+                'ShareMedia'
+            );
+        } catch (err) {
+            console.log('ReceiveSharingIntent error', err);
+        }
 
         return () => {
             ReceiveSharingIntent.clearReceivedFiles();
         };
     }, []);
+
 
     // useEffect(() => {
     //     let timeout: NodeJS.Timeout | null = null;
@@ -297,8 +302,7 @@ function ChatScreen({onReady}: Props) {
     };
 
     return (
-        <SafeAreaView style={{flex: 1}}>
-
+        <>
             <Animated.ScrollView
                 contentContainerStyle={styles.chatContainer}
                 ref={scrollViewRef}
@@ -310,7 +314,7 @@ function ChatScreen({onReady}: Props) {
                     setShowScrollDownButton(!isAtBottom);
                 }}
                 scrollEventThrottle={30}
-            >r
+            >
                 {messages.length === 0 && <Text style={styles.welcomeText}>{t('welcomeText')}</Text>}
 
                 {messages.map((msg, index) => {
@@ -385,7 +389,7 @@ function ChatScreen({onReady}: Props) {
                 onClose={() => setPickerVisible(false)}
                 onPhotoSelected={handlePhotoSelected}
             />
-        </SafeAreaView>
+        </>
     );
 
 

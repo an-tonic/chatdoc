@@ -17,6 +17,7 @@ export let showModelNotice: ((text: string) => void) | null = null;
 
 
 export default function App() {
+    console.log("App rendered");
     const [chatReady, setChatReady] = useState(false);
     const [minTimeElapsed, setMinTimeElapsed] = useState(false);
     const [authenticated, setAuthenticated] = useState(true);
@@ -48,7 +49,6 @@ export default function App() {
 
 
     return (
-        <SafeAreaProvider>
             <DBProvider>
                 <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={t('chatPage')}>
@@ -93,7 +93,7 @@ export default function App() {
                     <View style={StyleSheet.absoluteFill}>
                         <SplashScreen/>
                     </View>
-                )}</DBProvider>
-        </SafeAreaProvider>
+                )}
+            </DBProvider>
     );
 }

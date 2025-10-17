@@ -33,11 +33,16 @@ class MainActivity : ReactActivity() {
         DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
 
-    override fun onNewIntent(intent: Intent?){
-        super.onNewIntent(intent)
-        intent?.let {
-                setIntent(it)
+    override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            if (intent == null) {
+                setIntent(Intent())
             }
-    }
+        }
+
+        override fun onNewIntent(intent: Intent?) {
+            super.onNewIntent(intent)
+            if (intent != null) setIntent(intent)
+        }
 
 }
