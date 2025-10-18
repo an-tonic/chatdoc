@@ -9,8 +9,8 @@ import {
     doesFileExist,
     saveFileFromLocalFS,
     saveFileFromRemoteFS,
-    searchSimilarEmbedding,
-    updateMetadataByID
+    searchLocalDB,
+    updateMetadataLocalDB
 } from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
 import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
@@ -24,7 +24,7 @@ import {BarIndicator,} from 'react-native-indicators';
 import {executeSQL} from "../api/dev_utils.ts";
 import {useDB} from "../context/DBContext.tsx";
 import {ImageMessage} from "../types/types.ts";
-import {searchSimilarDocuments} from "../api/sync.ts";
+import {searchServerDB} from "../api/utils.ts";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -142,11 +142,19 @@ function ChatScreen() {
                     'Microphone Permission Required',
                     'Please enable microphone access in your device settings to record audio.'
                 );
+                return;
             }
-            return;
+            AudioRecord.init({
+                sampleRate: 16000,
+                channels: 1,
+                bitsPerSample: 16,
+                audioSource: 6,
+                wavFile: 'temp_recording.wav',
+            });
         }
 
         AudioRecord.start();
+
     };
 
 
@@ -164,7 +172,6 @@ function ChatScreen() {
                 ]);
                 return;
             }
-
             let context = whisperContext;
             if (!context) {
                 context = await initWhisper();
@@ -241,27 +248,29 @@ function ChatScreen() {
         const result = await llamaContext.embedding(text);
         await llamaContext.embedding("");
 
-        const foundServerDocument = await searchSimilarDocuments(result.embedding, 1);
-        console.log(foundServerDocument);
-        if(foundServerDocument[0]) {
-            const fileExistsLocally = await doesFileExist(dbInstance, foundServerDocument[0].server_id)
+        const foundServerDocuments = await searchServerDB(result.embedding, 1);
+
+        if(foundServerDocuments && foundServerDocuments[0]) {
+
+            const firstServerFile = foundServerDocuments[0];
+            const fileExistsLocally = await doesFileExist(dbInstance, firstServerFile.server_id)
 
             if(!fileExistsLocally){
-                scrollViewRef.current?.scrollToEnd();
+                const {savedFileID, savedFilePath} = await saveFileFromRemoteFS(dbInstance, firstServerFile);
 
-                const {savedFileID, savedFilePath} = await saveFileFromRemoteFS(dbInstance, foundServerDocument[0]);
-
-                addImageToUI(savedFileID, savedFilePath, foundServerDocument[0].description || "", 'search');
+                addImageToUI(savedFileID, savedFilePath, firstServerFile.description || "", 'search');
             } else {
-                const foundDocument = await searchSimilarEmbedding(dbInstance, result.embedding);
-                if (foundDocument) {
-                    scrollViewRef.current?.scrollToEnd();
-                    const confidence = (1.5 - Number(foundDocument.distance)) / 1.5 * 100;
+                const foundDocuments = await searchLocalDB(dbInstance, result.embedding);
+                if (foundDocuments && foundDocuments[0]) {
+
+                    const firstLocalFile = foundDocuments[0];
+
+                    const confidence = (1.5 - Number(firstLocalFile.distance)) / 1.5 * 100;
                     setMessages(prev => [
                         ...prev,
                         {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
                     ]);
-                    addImageToUI(foundDocument.id, foundDocument.path, foundDocument.description, 'search');
+                    addImageToUI(firstLocalFile.local_id, firstLocalFile.image_url, firstLocalFile.description, 'search');
                 } else {
                     console.log("adding from local");
                     setMessages(prev => [
@@ -278,8 +287,8 @@ function ChatScreen() {
 
     const handleNewEmbedding = async (text: string) => {
         if (!llamaContext) {
-            Alert.alert('Model Not Loaded', 'Please load the model first.');
-            return;
+            const ok = await initLlama();
+            if (!ok) return;
         }
         if (pinnedImageID == null) return;
 
@@ -292,7 +301,7 @@ function ChatScreen() {
         );
 
         const result = await llamaContext.embedding(text);
-        await updateMetadataByID(dbInstance, pinnedImageID, null, text, result.embedding);
+        await updateMetadataLocalDB(dbInstance, pinnedImageID, null, text, result.embedding);
         setPinnedImageID(null)
     };
 
@@ -371,11 +380,13 @@ function ChatScreen() {
                 onRecordPressIn={handleRecordStart}
                 onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async (text) => {
+                    scrollViewRef.current?.scrollToEnd();
                     if (pinnedImageID) {
                         await handleNewEmbedding(text);
                     } else {
                         await handleSendMessage(text);
                     }
+                    scrollViewRef.current?.scrollToEnd();
                 }}
             />
 

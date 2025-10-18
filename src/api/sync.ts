@@ -1,34 +1,5 @@
 import {DB} from "@op-engineering/op-sqlite";
-import {SERVER_URL} from "../types/types.ts";
-
-
-export async function searchSimilarDocuments(embedding: any, topK: number = 5) {
-    try {
-
-
-        const res = await fetch(`${SERVER_URL}/search`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({embedding: JSON.stringify(embedding), topK: topK}),
-        });
-
-        if (!res.ok) {
-            throw new Error(`Search failed with status ${res.status}`);
-        }
-
-        const data = await res.json();
-        return data.map((doc: any) => ({
-            server_id: doc.id,
-            image_url: doc.image_url,
-            description: doc.description,
-            distance: doc.distance,
-        }));
-
-    } catch (err) {
-        console.error("Search request failed:", err);
-        return [];
-    }
-}
+import {SERVER_URL, ServerDocument} from "../types/types.ts";
 
 
 export async function syncUnsyncedDocuments(db: DB) {

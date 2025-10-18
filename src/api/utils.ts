@@ -2,7 +2,7 @@ import RNFS from "react-native-fs";
 import {DB} from "@op-engineering/op-sqlite";
 import {Alert} from "react-native";
 import {t} from "../languages/i18n";
-import {SERVER_URL, ServerDocument} from "../types/types.ts";
+import {LocalDocument, SERVER_URL, ServerDocument} from "../types/types.ts";
 
 
 export async function doesFileExist(db: DB, serverDocId: number): Promise<boolean> {
@@ -14,7 +14,6 @@ export async function doesFileExist(db: DB, serverDocId: number): Promise<boolea
 
         const countValue = result.rows?.[0]?.count ?? 0;
         const count = Number(countValue);
-        console.log(countValue, count);
         return count > 0;
 
     } catch (err) {
@@ -40,8 +39,7 @@ export const saveFileFromRemoteFS = async (db: DB, doc: ServerDocument) => {
 
         const uri = savedFilePath.startsWith('file://') ? savedFilePath : `file://${savedFilePath}`;
         const savedFileID = await insertNewFile(db, uri, 1);
-        console.log(savedFileID, doc);
-        await updateMetadataByID(db, savedFileID, doc.server_id, doc.description, null, 1);
+        await updateMetadataLocalDB(db, savedFileID, doc.server_id, doc.description, doc.embedding, 1);
         console.log('File saved to DB with id:', savedFileID);
 
         return { savedFileID, savedFilePath: uri };
@@ -50,7 +48,6 @@ export const saveFileFromRemoteFS = async (db: DB, doc: ServerDocument) => {
         return { savedFileID: -1, savedFilePath: '' };
     }
 };
-
 
 export const saveFileFromLocalFS = async (db: DB, filePath: string) => {
 
@@ -82,7 +79,7 @@ async function insertNewFile(db: DB, filePath: string, synced=0):Promise<number>
     return -1;
 }
 
-export async function searchSimilarEmbedding(db: DB, embedding: number[], limit = 10) {
+export async function searchLocalDB(db: DB, embedding: number[], topK: number = 5): Promise<LocalDocument[] | null> {
     try {
         const results = await db.execute(
             `SELECT 
@@ -95,14 +92,16 @@ export async function searchSimilarEmbedding(db: DB, embedding: number[], limit 
              WHERE m.embedding IS NOT NULL
              ORDER BY distance
              LIMIT ?`,
-            [new Float32Array(embedding), limit]
+            [new Float32Array(embedding), topK]
         );
-
         if (results.rows.length > 0) {
-            const {id, path, description, distance } = results.rows[0];
-            if (path){
-                return {id: Number(id), path: path.toString(), description: description?.toString(), distance: distance?.toString() };
-            }
+            return results.rows.map((doc: any) => ({
+                local_id: doc.id,
+                image_url: doc.path,
+                description: doc.description,
+                embedding: null,
+                distance: doc.distance,
+            }));
         }
     } catch (err) {
         console.error('SQL error:', err);
@@ -110,7 +109,34 @@ export async function searchSimilarEmbedding(db: DB, embedding: number[], limit 
     return null;
 }
 
-export async function updateMetadataByID(
+export async function searchServerDB(embedding: number [], topK: number = 5): Promise<ServerDocument[] | null> {
+    try {
+        const res = await fetch(`${SERVER_URL}/search`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({embedding: JSON.stringify(embedding), topK: topK}),
+        });
+
+        if (!res.ok) {
+            throw new Error(`Search failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data.map((doc: any) => ({
+            server_id: doc.id,
+            image_url: doc.image_url,
+            description: doc.description,
+            embedding: JSON.parse(doc.embedding),
+            distance: doc.distance,
+        }));
+
+    } catch (err) {
+        console.error("Search request failed:", err);
+        return null;
+    }
+}
+
+export async function updateMetadataLocalDB(
     db: DB,
     localDBID: number,
     serverDBID: number | null = null,
