@@ -28,10 +28,6 @@ import {searchSimilarDocuments} from "../api/sync.ts";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
-type Props = {
-    onReady: () => void;
-};
-
 
 // @formatter:off
 type Message =
@@ -40,7 +36,7 @@ type Message =
     | { type: 'loading'; source: 'user' | 'search' };
 
 
-function ChatScreen({onReady}: Props) {
+function ChatScreen() {
     console.log("ChatScreen Rendered!")
     const inputBarRef = useRef<InputBarHandle>(null);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -55,6 +51,7 @@ function ChatScreen({onReady}: Props) {
     const dbInstance = useDB()!;
 
     useEffect(() => {
+
         const setup = async () => {
 
             void initLlama();
@@ -66,8 +63,6 @@ function ChatScreen({onReady}: Props) {
                 audioSource: 6,
                 wavFile: 'temp_recording.wav',
             });
-
-            onReady();
         };
 
         void setup();

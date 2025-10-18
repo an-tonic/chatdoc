@@ -1,11 +1,10 @@
 import React, {createRef, useEffect, useState} from 'react';
-import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Text, TouchableOpacity} from 'react-native';
 import {NavigationContainer, NavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SplashScreen from './src/screens/SplashScreen';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import ReactNativeBiometrics from "react-native-biometrics";
 import {t} from "./src/languages/i18n";
@@ -17,23 +16,16 @@ export let showModelNotice: ((text: string) => void) | null = null;
 
 
 export default function App() {
-    console.log("App rendered");
-    const [chatReady, setChatReady] = useState(false);
-    const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+    const [showSplashScreen, setShowSplashScreen] = useState(true);
     const [authenticated, setAuthenticated] = useState(true);
     const [modelNoticeText, setModelNoticeText] = useState<string | null>(null);
     const navigationRef = createRef<NavigationContainerRef<any>>();
 
+
+
     useEffect(() => {
         showModelNotice = (text: string) => setModelNoticeText(text);
-    }, []);
-
-    useEffect(() => {
-        const timeout = setTimeout(() => setMinTimeElapsed(true), 1000);
-        return () => clearTimeout(timeout);
-    }, []);
-
-    useEffect(() => {
         if (authenticated) return
         rnBiometrics.simplePrompt({promptMessage: 'Authenticate to enter the app'})
             .then(({success}) => {
@@ -45,15 +37,20 @@ export default function App() {
             });
     }, []);
 
-    const showSplash = !chatReady || !minTimeElapsed || !authenticated;
+    const showSplash = showSplashScreen || !authenticated;
 
-
+    if (showSplashScreen) {
+        console.log("App Splash rendered");
+        return <SplashScreen onAnimationFinish={() => setShowSplashScreen(false)} />;
+    }
+    console.log("App rendered");
     return (
             <DBProvider>
                 <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={t('chatPage')}>
                         <Stack.Screen
                             name="Chat"
+                            component={ChatScreen}
                             options={({navigation}) => ({
                                 title: 'Chat',
                                 headerRight: () => (
@@ -62,9 +59,7 @@ export default function App() {
                                     </TouchableOpacity>
                                 ),
                             })}
-                        >
-                            {() => <ChatScreen onReady={() => setChatReady(true)}/>}
-                        </Stack.Screen>
+                        />
                         <Stack.Screen name="Settings" component={SettingsScreen}/>
                     </Stack.Navigator>
                 </NavigationContainer>
@@ -87,12 +82,6 @@ export default function App() {
                             {modelNoticeText}
                         </Text>
                     </TouchableOpacity>
-                )}
-
-                {showSplash && (
-                    <View style={StyleSheet.absoluteFill}>
-                        <SplashScreen/>
-                    </View>
                 )}
             </DBProvider>
     );

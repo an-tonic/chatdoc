@@ -8,4 +8,10 @@ npx react-native bundle \
   --assets-dest android/app/src/main/res/
 
 
-npx react-native run-android
+cd  /c/ChatDOC/android || exit
+
+./gradlew assembleRelease
+
+cd ..
+
+adb install /android/app/build/outputs/apk/release/app-release.apk

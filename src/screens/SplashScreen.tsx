@@ -4,15 +4,16 @@ import LottieView from 'lottie-react-native';
 
 type Props = { onAnimationFinish: () => void };
 
-export default function SplashScreen() {
+export default function SplashScreen({ onAnimationFinish }: Props) {
     return (
         <View style={styles.container}>
             <LottieView
+                duration={1000}
                 source={require('../assets/SplashAnimation.json')}
                 autoPlay
-                loop={true}
+                loop={false}
                 style={styles.lottie}
-                // onAnimationFinish={() => {}}
+                onAnimationFinish={onAnimationFinish}
             />
         </View>
     );
