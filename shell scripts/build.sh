@@ -10,8 +10,8 @@ npx react-native bundle \
 
 cd  /c/ChatDOC/android || exit
 
-./gradlew assembleRelease
+./gradlew assembleDebug
 
 cd ..
 
-adb install /android/app/build/outputs/apk/release/app-release.apk
+adb install ./android/app/build/outputs/apk/debug/app-debug.apk

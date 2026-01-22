@@ -1,5 +1,4 @@
 import {Alert, Animated, ScrollView, Text, TouchableOpacity, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
@@ -10,6 +9,7 @@ import {
     saveFileFromLocalFS,
     saveFileFromRemoteFS,
     searchLocalDB,
+    searchServerDB,
     updateMetadataLocalDB
 } from "../api/utils.ts";
 import {styles} from "../styles/styles.ts";
@@ -24,7 +24,6 @@ import {BarIndicator,} from 'react-native-indicators';
 import {executeSQL} from "../api/dev_utils.ts";
 import {useDB} from "../context/DBContext.tsx";
 import {ImageMessage} from "../types/types.ts";
-import {searchServerDB} from "../api/utils.ts";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -118,9 +117,9 @@ function ChatScreen() {
     const initLlama = async () => {
         const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
 
-        if (!newLlamaContext) return false;
+        if (!newLlamaContext) return null;
         setLlamaContext(newLlamaContext);
-        return true;
+        return newLlamaContext;
     };
 
     const initWhisper = async () => {
@@ -175,10 +174,7 @@ function ChatScreen() {
             let context = whisperContext;
             if (!context) {
                 context = await initWhisper();
-                if (!context) {
-                    Alert.alert("Error", "Failed to initialize Whisper model.");
-                    return;
-                }
+                if (!context) return;
                 setWhisperContext(context);
             }
 
@@ -201,7 +197,7 @@ function ChatScreen() {
                         if (idx !== -1) updated[idx] = {type: 'text', text: result, source: 'user'};
                         return updated;
                     });
-                    await runEmbeddingSearch(result);
+                    await runEmbeddingSearch(result, llamaContext);
                 }
             }
         } finally {
@@ -232,21 +228,24 @@ function ChatScreen() {
     };
 
     const handleSendMessage = async (text: string) => {
-        if (!llamaContext) {
-            const ok = await initLlama();
-            if (!ok) return;
-        }
         try {
+            let context = llamaContext;
+            if (!context) {
+                const newContext = await initLlama();
+                if (!newContext) return;
+                context = newContext;
+            }
             setMessages(prev => [...prev, {type: 'text', text, source: 'user'}]);
-            await runEmbeddingSearch(text);
+            await runEmbeddingSearch(text, context);
         } catch (err) {
             Alert.alert("Error During Inference", err instanceof Error ? err.message : "Unknown error");
         }
     };
 
-    const runEmbeddingSearch = async (text: string) => {
-        const result = await llamaContext.embedding(text);
-        await llamaContext.embedding("");
+    const runEmbeddingSearch = async (text: string, context: any) => {
+
+        const result = await context.embedding(text);
+        await context.embedding("");
 
         const foundServerDocuments = await searchServerDB(result.embedding, 1);
 
@@ -307,6 +306,7 @@ function ChatScreen() {
 
     return (
         <>
+
             <Animated.ScrollView
                 contentContainerStyle={styles.chatContainer}
                 ref={scrollViewRef}

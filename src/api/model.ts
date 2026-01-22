@@ -1,5 +1,4 @@
 import RNFS from "react-native-fs";
-import {Alert} from "react-native";
 import {initLlama, releaseAllLlama} from "llama.rn";
 import {initWhisper, releaseAllWhisper} from 'whisper.rn';
 import {showModelNotice} from "../../App.tsx";
@@ -54,7 +53,7 @@ export const loadLlamaModel = async (modelName: string, context: any) => {
         const fileExists = await RNFS.exists(destPath);
 
         if (!fileExists) {
-            showModelNotice?.('Before continuing, download the Llama model. Tap here to open settings.');
+            showModelNotice?.('Before continuing, download the Embedding model. Tap here to open settings.');
             return null;
         }
 

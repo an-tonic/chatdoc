@@ -10,6 +10,7 @@ import {clearDatabase} from "../api/utils.ts";
 import {syncUnsyncedDocuments} from "../api/sync.ts";
 
 function SettingsScreen() {
+    console.log("SettingsScreen Rendered!");
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
     const [language, setLanguage] = useState(getLocale());
