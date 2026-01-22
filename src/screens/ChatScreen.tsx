@@ -256,29 +256,30 @@ function ChatScreen() {
 
             if(!fileExistsLocally){
                 const {savedFileID, savedFilePath} = await saveFileFromRemoteFS(dbInstance, firstServerFile);
-
                 addImageToUI(savedFileID, savedFilePath, firstServerFile.description || "", 'search');
-            } else {
-                const foundDocuments = await searchLocalDB(dbInstance, result.embedding);
-                if (foundDocuments && foundDocuments[0]) {
-
-                    const firstLocalFile = foundDocuments[0];
-
-                    const confidence = (1.5 - Number(firstLocalFile.distance)) / 1.5 * 100;
-                    setMessages(prev => [
-                        ...prev,
-                        {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
-                    ]);
-                    addImageToUI(firstLocalFile.local_id, firstLocalFile.image_url, firstLocalFile.description, 'search');
-                } else {
-                    console.log("adding from local");
-                    setMessages(prev => [
-                        ...prev,
-                        {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
-                    ]);
-                }
+                return;
             }
+        }
 
+        if(!foundServerDocuments){
+            const foundDocuments = await searchLocalDB(dbInstance, result.embedding);
+            if (foundDocuments && foundDocuments[0]) {
+
+                const firstLocalFile = foundDocuments[0];
+
+                const confidence = (1.5 - Number(firstLocalFile.distance)) / 1.5 * 100;
+                setMessages(prev => [
+                    ...prev,
+                    {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
+                ]);
+                addImageToUI(firstLocalFile.local_id, firstLocalFile.image_url, firstLocalFile.description, 'search');
+            } else {
+                console.log("adding from local");
+                setMessages(prev => [
+                    ...prev,
+                    {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
+                ]);
+            }
         }
 
 

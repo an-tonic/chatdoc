@@ -118,7 +118,8 @@ export async function searchServerDB(embedding: number [], topK: number = 5): Pr
         });
 
         if (!res.ok) {
-            throw new Error(`Search failed with status ${res.status}`);
+            console.error(`Search failed with status ${res.status}`);
+            return null;
         }
 
         const data = await res.json();
