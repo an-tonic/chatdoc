@@ -132,7 +132,7 @@ export async function searchServerDB(embedding: number [], topK: number = 5): Pr
         }));
 
     } catch (err) {
-        console.error("Search request failed:", err);
+        console.log("Search request failed:", err);
         return null;
     }
 }
