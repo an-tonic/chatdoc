@@ -50,17 +50,22 @@ export const saveFileFromRemoteFS = async (db: DB, doc: ServerDocument) => {
 };
 
 export const saveFileFromLocalFS = async (db: DB, filePath: string) => {
+    try {
+        const extension = filePath.substring(filePath.lastIndexOf(".") + 1);
+        const savedFilePath = `${RNFS.ExternalDirectoryPath}/photo_${Date.now()}.${extension}`;
+        await RNFS.copyFile(filePath, savedFilePath);
+        console.log("File saved to: ", savedFilePath);
 
-    const extension = filePath.substring(filePath.lastIndexOf(".") + 1);
-    const savedFilePath = `${RNFS.ExternalDirectoryPath}/photo_${Date.now()}.${extension}`;
-    await RNFS.copyFile(filePath, savedFilePath);
-    console.log("File saved to: ", savedFilePath);
+        const uri = savedFilePath.startsWith('file://') ? savedFilePath : `file://${savedFilePath}`;
+        const savedFileID = await insertNewFile(db, uri);
+        console.log("File saved to DB with id: ", uri);
 
-    const uri = savedFilePath.startsWith('file://') ? savedFilePath : `file://${savedFilePath}`;
-    const savedFileID = await insertNewFile(db, uri);
-    console.log("File saved to DB with id: ", uri);
+        return {savedFileID, savedFilePath:uri}
+    } catch (e){
+        console.error('saveFileFromLocalFS failed:', e);
+        return { savedFileID: null, savedFilePath: null };
+    }
 
-    return {savedFileID, savedFilePath:uri}
 };
 
 async function insertNewFile(db: DB, filePath: string, synced=0):Promise<number> {

@@ -78,6 +78,7 @@ function ChatScreen() {
                 async (files: any) => {
                     if (files && files.length > 0) {
                         const { savedFileID, savedFilePath } = await saveFileFromLocalFS(dbInstance, files[0].filePath);
+                        if(!savedFilePath) return;
                         addImageToUI(savedFileID, savedFilePath);
                     }
                 },
@@ -216,7 +217,7 @@ function ChatScreen() {
 
     const handlePhotoSelected = async (path: string) => {
         const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, path)
-
+        if (!savedFilePath) return;
         addImageToUI(savedFileID, savedFilePath);
         inputBarRef.current?.focus();
         scrollViewRef.current?.scrollToEnd();
