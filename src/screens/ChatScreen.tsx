@@ -181,13 +181,15 @@ function ChatScreen() {
                     await runEmbeddingSearch(result, llamaContext);
                 }
             }
+        } catch (err) {
+            console.warn('Failed to process recording', err);
+            setMessages(prev => [...prev, {type: 'text', text: t('badAudioMessage'), source: 'search'}]);
         } finally {
             RNFS.unlink(internalPath).catch(() => {});
         }
     };
 
     const substituteLastMessage = (text: string) => {
-        // TODO check that this works as before
         setMessages(prev => [...prev.slice(0, -1), {type: 'text', text, source: 'search'}]);
     };
 
