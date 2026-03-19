@@ -36,7 +36,7 @@ function AppInner() {
             });
     }, []);
 
-    const showSplash = showSplashScreen || !authenticated;
+    // const showSplash = showSplashScreen || !authenticated;
 
     if (showSplashScreen) {
         console.log('App Splash rendered');

@@ -25,13 +25,21 @@ export const makeStyles = (colors: Theme) => StyleSheet.create({
         position: 'relative',
     },
 
-    pinIconOverlay: {
+    fileBadge: {
         position: 'absolute',
-        top: 4,
-        right: 4,
-        backgroundColor: colors.bgPrimary,
-        borderRadius: 10,
+        top: 6,
+        right: 6,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        borderRadius: 4,
         padding: 2,
+    },
+
+    descriptionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        paddingTop: 4,
+        paddingBottom: 2,
     },
 
     chatContainer: {
@@ -49,7 +57,7 @@ export const makeStyles = (colors: Theme) => StyleSheet.create({
         maxWidth: '85%',
     },
     textMessage: {
-        fontSize: 16,
+        fontSize: 15,
         color: colors.textPrimary,
     },
 

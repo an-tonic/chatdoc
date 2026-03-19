@@ -2,62 +2,56 @@ import {Alert, Animated, Keyboard, ScrollView, Text, TouchableOpacity, View} fro
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
-import PhotoPicker from "../components/PhotoPicker.tsx";
-import InputBar, {InputBarHandle} from "../components/InputBar.tsx";
+import PhotoPicker, {PickedFile} from '../components/PhotoPicker.tsx';
+import InputBar, {InputBarHandle} from '../components/InputBar.tsx';
 import {
     doesFileExist,
     saveFileFromLocalFS,
     saveFileFromRemoteFS,
     searchLocalDB,
     searchServerDB,
-    updateMetadataLocalDB
-} from "../api/utils.ts";
-import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
-import BubbleImage from "../components/BubbleImage.tsx";
-import {releaseAllWhisper} from "whisper.rn";
-import {checkRecordPermissions, requestRecordPermissions} from "../api/permissions.ts";
+    updateMetadataLocalDB,
+} from '../api/utils.ts';
+import {loadLlamaModel, loadWhisperModel} from '../api/model.ts';
+import DocBubble from '../components/BubbleDoc.tsx';
+import {releaseAllWhisper} from 'whisper.rn';
+import {checkRecordPermissions, requestRecordPermissions} from '../api/permissions.ts';
 import AudioRecord from 'react-native-audio-record';
 import RNFS from 'react-native-fs';
 import {t} from '../languages/i18n';
-import {BarIndicator,} from 'react-native-indicators';
-import {executeSQL} from "../api/dev_utils.ts";
-import {useDB} from "../context/DBContext.tsx";
-import {ImageMessage} from "../types/types.ts";
-import {useStyles} from "../custom_hooks/useStyles.ts";
-import {useTheme} from "../context/ThemeContext.tsx";
-// import NetInfo from '@react-native-community/netinfo';
-// import {syncUnsyncedDocuments} from "../api/sync.ts";
+import {BarIndicator} from 'react-native-indicators';
+import {executeSQL} from '../api/dev_utils.ts';
+import {useDB} from '../context/DBContext.tsx';
+import {DocMessage} from '../types/types.ts';
+import {generateThumbnail, getFileType} from '../api/file_utils.ts';
+import {useStyles} from '../custom_hooks/useStyles.ts';
+import {useTheme} from '../context/ThemeContext.tsx';
 
-
-// @formatter:off
 type Message =
     | { type: 'text'; text: string; source: 'user' | 'search' }
-    | ImageMessage
+    | DocMessage
     | { type: 'loading'; source: 'user' | 'search' };
 
 
 function ChatScreen() {
-    console.log("ChatScreen Rendered!")
+    console.log('ChatScreen Rendered!');
+    const styles = useStyles();
+    const {colors} = useTheme();
     const inputBarRef = useRef<InputBarHandle>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const [llamaContext, setLlamaContext] = useState<any>(null);
     const [whisperContext, setWhisperContext] = useState<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
-    const [pinnedImageID, setPinnedImageID] = useState<number | null>(null);
+    const [pinnedDocID, setPinnedDocID] = useState<number | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
-    const styles = useStyles();
-    const {colors} = useTheme();
 
     // TODO: Fix this? null safety
     const dbInstance = useDB()!;
 
     useEffect(() => {
-
         const setup = async () => {
-
             void initLlama();
-
             AudioRecord.init({
                 sampleRate: 16000,
                 channels: 1,
@@ -66,9 +60,7 @@ function ChatScreen() {
                 wavFile: 'temp_recording.wav',
             });
         };
-
         void setup();
-
         return () => {
             void releaseAllLlama();
             void releaseAllWhisper();
@@ -80,21 +72,16 @@ function ChatScreen() {
             ReceiveSharingIntent.getReceivedFiles(
                 async (files: any) => {
                     if (files && files.length > 0) {
-                        const { savedFileID, savedFilePath } = await saveFileFromLocalFS(dbInstance, files[0].filePath);
-                        if(!savedFilePath) return;
-                        addImageToUI(savedFileID, savedFilePath);
+                        await handleFileSelected({path: files[0].filePath});
                     }
                 },
                 (error: any) => console.log(error),
-                'ShareMedia'
+                'ShareMedia',
             );
         } catch (err) {
             console.log('ReceiveSharingIntent error', err);
         }
-
-        return () => {
-            ReceiveSharingIntent.clearReceivedFiles();
-        };
+        return () => ReceiveSharingIntent.clearReceivedFiles();
     }, []);
 
 
@@ -119,16 +106,14 @@ function ChatScreen() {
 
 
     const initLlama = async () => {
-        const newLlamaContext = await loadLlamaModel("nomic-embed-text-v1.5.Q8_0.gguf", llamaContext);
-
+        const newLlamaContext = await loadLlamaModel('nomic-embed-text-v1.5.Q8_0.gguf', llamaContext);
         if (!newLlamaContext) return null;
         setLlamaContext(newLlamaContext);
         return newLlamaContext;
     };
 
     const initWhisper = async () => {
-        const newWhisperContext = await loadWhisperModel("ggml-tiny.bin", whisperContext);
-
+        const newWhisperContext = await loadWhisperModel('ggml-tiny.bin', whisperContext);
         if (!newWhisperContext) return null;
         setWhisperContext(newWhisperContext);
         return newWhisperContext;
@@ -155,24 +140,16 @@ function ChatScreen() {
                 wavFile: 'temp_recording.wav',
             });
         }
-
         AudioRecord.start();
-
     };
 
-
     const handleRecordStop = async () => {
-
         const internalPath = await AudioRecord.stop();
 
         try {
             const stat = await RNFS.stat(internalPath);
-            console.log('size (bytes):', stat.size);
             if (stat.size <= 44) {
-                setMessages(prev => [
-                    ...prev,
-                    {type: 'text', text: t('tooShortAudio'), source: 'search'},
-                ]);
+                setMessages(prev => [...prev, {type: 'text', text: t('tooShortAudio'), source: 'search'}]);
                 return;
             }
             let context = whisperContext;
@@ -182,17 +159,17 @@ function ChatScreen() {
                 setWhisperContext(context);
             }
 
-            if (!pinnedImageID) {
+            if (!pinnedDocID) {
                 setMessages(prev => [...prev, {type: 'loading', source: 'user'}]);
             }
             const {promise} = context.transcribe(internalPath, {language: 'en'});
             let {result} = await promise;
             result = result.trim();
 
-            if (result === "[BLANK_AUDIO]" || result === "[INAUDIBLE]") {
+            if (result === '[BLANK_AUDIO]' || result === '[INAUDIBLE]') {
                 substituteLastMessage(t('badAudioMessage'));
             } else {
-                if (pinnedImageID) {
+                if (pinnedDocID) {
                     inputBarRef.current?.setText(result);
                 } else {
                     setMessages(prev => {
@@ -205,30 +182,47 @@ function ChatScreen() {
                 }
             }
         } finally {
-            RNFS.unlink(internalPath).catch(() => {
-            });
+            RNFS.unlink(internalPath).catch(() => {});
         }
     };
 
     const substituteLastMessage = (text: string) => {
-        setMessages(prev => prev.slice(0, -1));
-        setMessages(prev => [
-            ...prev,
-            {type: 'text', text: text, source: 'search'},
-        ]);
-    }
+        // TODO check that this works as before
+        setMessages(prev => [...prev.slice(0, -1), {type: 'text', text, source: 'search'}]);
+    };
 
-    const handlePhotoSelected = async (path: string) => {
-        const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, path)
+    // --- core file handler ---
+    const handleFileSelected = async (file: PickedFile) => {
+        const {savedFileID, savedFilePath} = await saveFileFromLocalFS(dbInstance, file.path);
         if (!savedFilePath) return;
-        addImageToUI(savedFileID, savedFilePath);
-        inputBarRef.current?.focus();
+
+        const fileType = getFileType(savedFilePath);
+        const thumbnailUri = await generateThumbnail(savedFilePath, fileType);
+
+        addDocToUI(savedFileID, savedFilePath, thumbnailUri, fileType);
+        Keyboard.dismiss();
+        setTimeout(() => inputBarRef.current?.focus(), 50);
         scrollViewRef.current?.scrollToEnd();
     };
 
-    const addImageToUI = (id:number, uri: string, description: string = "...", source: 'user' | 'search' = 'user') => {
-        setMessages(prev => [...prev, {localDBID:id, type: 'image', uri, description, source}]);
-        setPinnedImageID(source === 'user' ? id : null);
+    const addDocToUI = (
+        id: number,
+        filePath: string,
+        thumbnailUri: string,
+        fileType = getFileType(filePath),
+        description: string = '...',
+        source: 'user' | 'search' = 'user',
+    ) => {
+        setMessages(prev => [...prev, {
+            type: 'doc',
+            localDBID: id,
+            filePath,
+            thumbnailUri,
+            fileType,
+            description,
+            source,
+        }]);
+        setPinnedDocID(source === 'user' ? id : null);
     };
 
     const handleSendMessage = async (text: string) => {
@@ -242,51 +236,47 @@ function ChatScreen() {
             setMessages(prev => [...prev, {type: 'text', text, source: 'user'}]);
             await runEmbeddingSearch(text, context);
         } catch (err) {
-            Alert.alert("Error During Inference", err instanceof Error ? err.message : "Unknown error");
+            Alert.alert('Error During Inference', err instanceof Error ? err.message : 'Unknown error');
         }
     };
 
     const runEmbeddingSearch = async (text: string, context: any) => {
-
         const result = await context.embedding(text);
-        await context.embedding("");
+        await context.embedding('');
 
         const foundServerDocuments = await searchServerDB(result.embedding, 1);
 
-        if(foundServerDocuments && foundServerDocuments[0]) {
-
+        if (foundServerDocuments && foundServerDocuments[0]) {
             const firstServerFile = foundServerDocuments[0];
-            const fileExistsLocally = await doesFileExist(dbInstance, firstServerFile.server_id)
-
-            if(!fileExistsLocally){
+            const fileExistsLocally = await doesFileExist(dbInstance, firstServerFile.server_id);
+            if (!fileExistsLocally) {
                 const {savedFileID, savedFilePath} = await saveFileFromRemoteFS(dbInstance, firstServerFile);
-                addImageToUI(savedFileID, savedFilePath, firstServerFile.description || "", 'search');
+                const fileType = getFileType(savedFilePath);
+                const thumbnailUri = await generateThumbnail(savedFilePath, fileType);
+                addDocToUI(savedFileID, savedFilePath, thumbnailUri, fileType, firstServerFile.description || '', 'search');
                 return;
             }
         }
 
-        if(!foundServerDocuments){
+        if (!foundServerDocuments) {
             const foundDocuments = await searchLocalDB(dbInstance, result.embedding);
             if (foundDocuments && foundDocuments[0]) {
-
                 const firstLocalFile = foundDocuments[0];
-
                 const confidence = (1.5 - Number(firstLocalFile.distance)) / 1.5 * 100;
                 setMessages(prev => [
                     ...prev,
                     {type: 'text', text: `Found this document (${confidence.toFixed(1)}%): `, source: 'search'},
                 ]);
-                addImageToUI(firstLocalFile.local_id, firstLocalFile.image_url, firstLocalFile.description, 'search');
+                const fileType = getFileType(firstLocalFile.image_url);
+                const thumbnailUri = await generateThumbnail(firstLocalFile.image_url, fileType);
+                addDocToUI(firstLocalFile.local_id, firstLocalFile.image_url, thumbnailUri, fileType, firstLocalFile.description, 'search');
             } else {
-                console.log("adding from local");
                 setMessages(prev => [
                     ...prev,
-                    {type: 'text', text: "Sorry, could not find any matching documents.", source: 'search'},
+                    {type: 'text', text: 'Sorry, could not find any matching documents.', source: 'search'},
                 ]);
             }
         }
-
-
     };
 
     const handleNewEmbedding = async (text: string) => {
@@ -294,19 +284,19 @@ function ChatScreen() {
             const ok = await initLlama();
             if (!ok) return;
         }
-        if (pinnedImageID == null) return;
+        if (pinnedDocID == null) return;
 
         setMessages(prev =>
             prev.map(msg =>
-                msg.type === 'image' && msg.localDBID === pinnedImageID
+                msg.type === 'doc' && msg.localDBID === pinnedDocID
                     ? {...msg, description: text}
-                    : msg
-            )
+                    : msg,
+            ),
         );
 
         const result = await llamaContext.embedding(text);
-        await updateMetadataLocalDB(dbInstance, pinnedImageID, null, text, result.embedding);
-        setPinnedImageID(null)
+        await updateMetadataLocalDB(dbInstance, pinnedDocID, null, text, result.embedding);
+        setPinnedDocID(null);
     };
 
     return (
@@ -315,10 +305,8 @@ function ChatScreen() {
                 contentContainerStyle={styles.chatContainer}
                 ref={scrollViewRef}
                 onScroll={event => {
-                    const offsetY = event.nativeEvent.contentOffset.y;
-                    const contentHeight = event.nativeEvent.contentSize.height;
-                    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-                    const isAtBottom = offsetY + layoutHeight >= contentHeight - 100;
+                    const {contentOffset, contentSize, layoutMeasurement} = event.nativeEvent;
+                    const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 100;
                     setShowScrollDownButton(!isAtBottom);
                 }}
                 scrollEventThrottle={30}
@@ -326,73 +314,62 @@ function ChatScreen() {
                 {messages.length === 0 && <Text style={styles.welcomeText}>{t('welcomeText')}</Text>}
 
                 {messages.map((msg, index) => {
-
-                    if (msg.type === 'image') {
+                    if (msg.type === 'doc') {
                         return (
-                            <BubbleImage
+                            <DocBubble
                                 key={index}
-                                image={msg}
-                                pinnedImageID={pinnedImageID}
+                                doc={msg}
+                                pinnedImageID={pinnedDocID}
                                 onPress={() => {
+                                    // TODO inccorect
                                     const id = msg.localDBID;
-                                    setPinnedImageID(prev => (prev === id ? null : id));
-                                    if (pinnedImageID !== id) {
-                                        Keyboard.dismiss();
-                                        setTimeout(() => inputBarRef.current?.focus(), 100);
-                                        inputBarRef.current?.setText(msg.description);
-                                    } else {
-                                        inputBarRef.current?.setText("");
-                                    }
+                                    setPinnedDocID(prev => (prev === id ? null : id));
+                                    Keyboard.dismiss();
+                                    setTimeout(() => inputBarRef.current?.focus(), 50);
+                                    inputBarRef.current?.setText(msg.description);
                                 }}
                             />
                         );
                     } else if (msg.type === 'text') {
                         return (
-                            <View key={index} style={[styles.textBubble,
-                                msg.source === "search" ? styles.msgLeft : styles.msgRight]}>
+                            <View key={index} style={[styles.textBubble, msg.source === 'search' ? styles.msgLeft : styles.msgRight]}>
                                 <Text style={styles.textMessage}>{msg.text}</Text>
                             </View>
                         );
                     } else if (msg.type === 'loading') {
                         return (
-                            <View key={index} style={[styles.textBubble,
-                                msg.source === "search" ? styles.msgLeft : styles.msgRight, {height: 41.5}]}>
+                            <View key={index} style={[styles.textBubble, msg.source === 'search' ? styles.msgLeft : styles.msgRight, {height: 41.5}]}>
                                 <BarIndicator count={15} size={10}/>
                             </View>
                         );
-                    } else {
-                        return null;
                     }
+                    return null;
                 })}
             </Animated.ScrollView>
 
             {showScrollDownButton && (
                 <View style={styles.scrollDownButton}>
-                    <Text onPress={() => scrollViewRef.current?.scrollToEnd({animated: true})}
-                          style={styles.scrollDownText}>
-                        ↓
-                    </Text>
+                    <Text
+                        onPress={() => scrollViewRef.current?.scrollToEnd({animated: true})}
+                        style={styles.scrollDownText}>↓</Text>
                 </View>
             )}
 
             {__DEV__ && (
-                <TouchableOpacity
-                    onPress={() => {
-                        void executeSQL(dbInstance, inputBarRef.current?.getText() || "")
-                    }}
-                >
+                <TouchableOpacity onPress={() => void executeSQL(dbInstance, inputBarRef.current?.getText() || '')}>
                     <Text>Execute SQL</Text>
                 </TouchableOpacity>
             )}
+
             <InputBar
-                pinnedImageID={pinnedImageID}
                 ref={inputBarRef}
+                isDocPinned={pinnedDocID !== null}
                 onPressAttachFiles={handlePaperclipPress}
                 onRecordPressIn={handleRecordStart}
                 onRecordPressOut={handleRecordStop}
                 onPressSendMessage={async (text) => {
                     scrollViewRef.current?.scrollToEnd();
-                    if (pinnedImageID) {
+                    if (pinnedDocID) {
                         await handleNewEmbedding(text);
                     } else {
                         await handleSendMessage(text);
@@ -404,13 +381,10 @@ function ChatScreen() {
             <PhotoPicker
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
-                onPhotoSelected={handlePhotoSelected}
+                onFileSelected={handleFileSelected}
             />
         </View>
     );
-
-
 }
-
 
 export default ChatScreen;

@@ -13,7 +13,7 @@ export type InputBarHandle = {
 
 
 const InputBar = forwardRef<InputBarHandle, {
-    pinnedImageID: number | null;
+    isDocPinned: boolean;
     onPressAttachFiles: () => void;
     onRecordPressIn?: () => void;
     onRecordPressOut?: () => void;
@@ -96,7 +96,7 @@ const InputBar = forwardRef<InputBarHandle, {
             disabled={inputText.length === 0}>
 
             <Icon
-                name={props.pinnedImageID ? "check-bold" : "send"}
+                name={props.isDocPinned ? "check-bold" : "send"}
                 size={24}
                 color={inputText.length > 0 ? colors.primary : colors.primaryMuted}
             />

@@ -1,7 +1,15 @@
 
-export type ImageMessage = {
-    localDBID: number; type: 'image'; uri: string; description: string; source: 'user' | 'search'; serverID?: number
-}
+export type FileType = 'image' | 'pdf' | 'video';
+
+export type DocMessage = {
+    type: 'doc';
+    localDBID: number;
+    filePath: string;
+    thumbnailUri: string;
+    fileType: FileType;
+    description: string;
+    source: 'user' | 'search';
+};
 
 export interface Document {
     image_url: string;
