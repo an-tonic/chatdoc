@@ -321,12 +321,15 @@ function ChatScreen() {
                                 doc={msg}
                                 pinnedImageID={pinnedDocID}
                                 onPress={() => {
-                                    // TODO inccorect
                                     const id = msg.localDBID;
                                     setPinnedDocID(prev => (prev === id ? null : id));
-                                    Keyboard.dismiss();
-                                    setTimeout(() => inputBarRef.current?.focus(), 50);
-                                    inputBarRef.current?.setText(msg.description);
+                                    if (pinnedDocID !== id) {
+                                        Keyboard.dismiss();
+                                        setTimeout(() => inputBarRef.current?.focus(), 100);
+                                        inputBarRef.current?.setText(msg.description);
+                                    } else {
+                                        inputBarRef.current?.setText("");
+                                    }
                                 }}
                             />
                         );
