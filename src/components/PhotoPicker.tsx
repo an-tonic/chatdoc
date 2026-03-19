@@ -42,6 +42,7 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
         }
     };
 
+    // noinspection RequiredAttributes
     return (
         <Modal isVisible={visible} onBackdropPress={onClose} style={{justifyContent: 'flex-end', margin: 0}}>
             <View style={{backgroundColor: colors.bgPrimary, padding: 20, borderTopLeftRadius: 12, borderTopRightRadius: 12}}>
