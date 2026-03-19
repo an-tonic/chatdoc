@@ -1,4 +1,4 @@
-import {TextInput, TouchableOpacity, Vibration, View} from "react-native";
+import {Keyboard, TextInput, TouchableOpacity, Vibration, View} from "react-native";
 import {styles} from "../styles/styles.ts";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import {forwardRef, useImperativeHandle, useRef, useState} from "react";
@@ -11,9 +11,9 @@ export type InputBarHandle = {
 };
 
 
-
 const InputBar = forwardRef<InputBarHandle, {
-    onPressAttachFiles: () => void,
+    pinnedImageID: number | null;
+    onPressAttachFiles: () => void;
     onRecordPressIn?: () => void;
     onRecordPressOut?: () => void;
     onPressSendMessage: (text: string) => Promise<void>
@@ -62,7 +62,7 @@ const InputBar = forwardRef<InputBarHandle, {
             }}
 
             onPressOut={() => {
-                if(!isRecording) return;
+                if (!isRecording) return;
                 setIsRecording(false);
                 Vibration.vibrate(5);
                 props.onRecordPressOut?.();
@@ -83,6 +83,7 @@ const InputBar = forwardRef<InputBarHandle, {
 
         <TouchableOpacity
             onPress={async () => {
+                Keyboard.dismiss();
                 const textToSend = inputText;
                 setInputText("");
                 Vibration.vibrate(5);
@@ -91,7 +92,12 @@ const InputBar = forwardRef<InputBarHandle, {
             style={styles.iconButton}
             disabled={inputText.length === 0}>
 
-            <Icon name="send" size={24} color={inputText.length > 0 ? "#0b43d6" : "#8c8c8c"}/>
+            <Icon
+                name={props.pinnedImageID ? "check-bold" : "send"}
+                size={24}
+                color={inputText.length > 0 ? "#0b43d6" : "#8c8c8c"}
+            />
+
         </TouchableOpacity>
 
 

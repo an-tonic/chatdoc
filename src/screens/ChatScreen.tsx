@@ -1,4 +1,4 @@
-import {Alert, Animated, ScrollView, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, Animated, Keyboard, ScrollView, Text, TouchableOpacity, View} from 'react-native';
 import {useEffect, useRef, useState} from 'react';
 import {releaseAllLlama} from 'llama.rn';
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
@@ -334,7 +334,13 @@ function ChatScreen() {
                                 onPress={() => {
                                     const id = msg.localDBID;
                                     setPinnedImageID(prev => (prev === id ? null : id));
-                                    inputBarRef.current?.setText(msg.description);
+                                    if (pinnedImageID !== id) {
+                                        Keyboard.dismiss();
+                                        setTimeout(() => inputBarRef.current?.focus(), 100);
+                                        inputBarRef.current?.setText(msg.description);
+                                    } else {
+                                        inputBarRef.current?.setText("");
+                                    }
                                 }}
                             />
                         );
@@ -377,6 +383,7 @@ function ChatScreen() {
                 </TouchableOpacity>
             )}
             <InputBar
+                pinnedImageID={pinnedImageID}
                 ref={inputBarRef}
                 onPressAttachFiles={handlePaperclipPress}
                 onRecordPressIn={handleRecordStart}

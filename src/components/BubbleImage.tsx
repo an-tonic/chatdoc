@@ -32,27 +32,24 @@ export default function BubbleImage(props: {
                             style={styles.image}
                             resizeMode="cover"
                         />
-                        {props.pinnedImageID === props.image.localDBID && (
-                            <View style={styles.pinIconOverlay}>
-                                <Icon name="pin-outline" size={20} color="#0b43d6"/>
-                            </View>
-                        )}
                     </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity  onPress={props.onPress}>
-                    <Text
-                        style={styles.imageDescription}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
-                    >
-                        {props.image.description ?? ''}
-                    </Text>
-                    <Icon
-                        name="pencil"
-                        size={18}
-                        color={"#0b43d6"}
-                    />
+                    <View style={{flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingTop: 4}}>
+                        <Text
+                            style={[styles.imageDescription, {flex: 1, paddingHorizontal: 0, paddingTop: 0}]}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
+                        >
+                            {props.image.description ?? ''}
+                        </Text>
+                        <Icon
+                            name="pencil"
+                            size={18}
+                            color="#0b43d6"
+                        />
+                    </View>
                 </TouchableOpacity>
             </View>
 
