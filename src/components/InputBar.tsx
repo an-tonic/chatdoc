@@ -1,7 +1,8 @@
 import {Keyboard, TextInput, TouchableOpacity, Vibration, View} from "react-native";
-import {styles} from "../styles/styles.ts";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import {forwardRef, useImperativeHandle, useRef, useState} from "react";
+import {useStyles} from "../custom_hooks/useStyles.ts";
+import {useTheme} from "../context/ThemeContext.tsx";
 
 export type InputBarHandle = {
     focus: () => void,
@@ -24,7 +25,8 @@ const InputBar = forwardRef<InputBarHandle, {
     const [isRecording, setIsRecording] = useState(false);
     const inputRef = useRef<TextInput>(null);
     const [inputText, setInputText] = useState("");
-
+    const styles = useStyles();
+    const {colors} = useTheme();
     useImperativeHandle(ref, () => ({
         focus: () => inputRef.current?.focus(),
         getText: () => inputText,
@@ -35,6 +37,7 @@ const InputBar = forwardRef<InputBarHandle, {
 
     return <View style={styles.inputRow}>
         <TextInput
+            placeholderTextColor={colors.textHint}
             ref={inputRef}
             style={styles.input}
             placeholder="Message..."
@@ -51,7 +54,7 @@ const InputBar = forwardRef<InputBarHandle, {
             }}
             style={styles.iconButton}>
 
-            <Icon name="paperclip" size={24} color="#818181"/>
+            <Icon name="paperclip" size={24} color={colors.primaryMuted}/>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -76,7 +79,7 @@ const InputBar = forwardRef<InputBarHandle, {
             <Icon
                 name="microphone-outline"
                 size={24}
-                color={isRecording ? "#0b43d6" : "#818181"}
+                color={isRecording ? colors.primary : colors.primaryMuted}
             />
         </TouchableOpacity>
 
@@ -95,7 +98,7 @@ const InputBar = forwardRef<InputBarHandle, {
             <Icon
                 name={props.pinnedImageID ? "check-bold" : "send"}
                 size={24}
-                color={inputText.length > 0 ? "#0b43d6" : "#8c8c8c"}
+                color={inputText.length > 0 ? colors.primary : colors.primaryMuted}
             />
 
         </TouchableOpacity>

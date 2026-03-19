@@ -1,26 +1,26 @@
 import {Dimensions, StyleSheet} from 'react-native';
+import {Theme} from './theme.ts';
 
 const screenWidth = Dimensions.get('window').width;
 
-export const styles = StyleSheet.create({
+export const makeStyles = (colors: Theme) => StyleSheet.create({
     container: {padding: 20},
 
     welcomeText: {
         fontSize: 17,
-        color: '#7e7e7e',
+        color: colors.textHint,
         fontWeight: 'thin',
         fontFamily: 'Roboto',
         lineHeight: 30,
         textAlign: 'center',
         textAlignVertical: 'center',
         height: 300,
-        paddingHorizontal: 50
+        paddingHorizontal: 50,
     },
-
 
     pinnedImageBubble: {
         borderWidth: 2,
-        borderColor: '#0b43d6',
+        borderColor: colors.primary,
         borderRadius: 8,
         position: 'relative',
     },
@@ -29,11 +29,10 @@ export const styles = StyleSheet.create({
         position: 'absolute',
         top: 4,
         right: 4,
-        backgroundColor: 'white',
+        backgroundColor: colors.bgPrimary,
         borderRadius: 10,
         padding: 2,
     },
-
 
     chatContainer: {
         padding: 5,
@@ -42,34 +41,32 @@ export const styles = StyleSheet.create({
     },
 
     textBubble: {
-        backgroundColor: '#e3e2e2',
+        backgroundColor: colors.bgSecondary,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 4,
         marginVertical: 4,
         maxWidth: '85%',
-        // alignSelf: 'flex-end',
     },
     textMessage: {
         fontSize: 16,
-        color: '#333',
+        color: colors.textPrimary,
     },
 
     imageBubble: {
         alignSelf: 'flex-end',
-        backgroundColor: '#eae9e9',
+        backgroundColor: colors.bgSecondary,
         borderRadius: 4,
         padding: 3,
         width: screenWidth * 0.6,
-
     },
     msgLeft: {
         alignSelf: 'flex-start',
-        backgroundColor: '#d6d6d6'
+        backgroundColor: colors.bgBubbleSearch,
     },
     msgRight: {
         alignSelf: 'flex-end',
-        backgroundColor: '#d0e0ff'
+        backgroundColor: colors.bgBubbleUser,
     },
 
     imageWrapper: {
@@ -83,28 +80,28 @@ export const styles = StyleSheet.create({
         borderRadius: 4,
     },
     imageDescription: {
-        color: '#555',
+        color: colors.textSecondary,
         fontSize: 12,
         paddingTop: 4,
         paddingHorizontal: 6,
         textAlign: 'left',
     },
     defaultButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: colors.primary,
         padding: 10,
         borderRadius: 5,
         marginBottom: 10,
     },
 
     dangerButton: {
-        backgroundColor: '#ff0000',
+        backgroundColor: colors.danger,
         padding: 10,
         borderRadius: 5,
         marginBottom: 10,
     },
 
     buttonText: {
-        color: '#fff',
+        color: colors.textOnPrimary,
         textAlign: 'center',
     },
 
@@ -115,13 +112,14 @@ export const styles = StyleSheet.create({
         padding: 5,
         borderWidth: 0,
         overflow: 'hidden',
-        backgroundColor: '#e1e0e0'
+        backgroundColor: colors.bgSecondary,
     },
 
     input: {
         flex: 1,
         paddingLeft: 10,
-        fontSize: 18
+        fontSize: 18,
+        color: colors.textPrimary,
     },
 
     iconButton: {
@@ -134,19 +132,18 @@ export const styles = StyleSheet.create({
 
     recordingBackground: {
         position: 'absolute',
-        width: 80, // larger than the touchable
+        width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(11,67,214,0.2)', // translucent fill
+        backgroundColor: colors.primaryMuted,
         zIndex: -1,
     },
-
 
     scrollDownButton: {
         position: 'absolute',
         bottom: 60,
         right: 15,
-        backgroundColor: '#333',
+        backgroundColor: colors.textPrimary,
         borderRadius: 30,
         width: 48,
         height: 48,
@@ -156,9 +153,7 @@ export const styles = StyleSheet.create({
         zIndex: 10,
     },
     scrollDownText: {
-        color: 'white',
+        color: colors.textOnPrimary,
         fontSize: 24,
     },
-
-
 });

@@ -1,19 +1,19 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import {View, Text, StyleSheet} from "react-native";
 
 interface ProgressBarProps {
     progress: number; // Percentage (0–100)
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({progress}) => {
     const clampedProgress = Math.max(0, Math.min(progress, 100));
 
     return (
         <View style={styles.container}>
-        <View style={[styles.bar, { width: `${clampedProgress}%` }]} />
-    <Text style={styles.text}>{clampedProgress}%</Text>
+            <View style={[styles.bar, {width: `${clampedProgress}%`}]}/>
+            <Text style={styles.text}>{clampedProgress}%</Text>
         </View>
-);
+    );
 };
 
 const styles = StyleSheet.create({

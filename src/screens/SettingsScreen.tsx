@@ -1,25 +1,28 @@
 import React, {useState} from 'react';
-import {Alert, Text, TouchableOpacity} from 'react-native';
-import {SafeAreaView} from "react-native-safe-area-context";
-import {styles} from "../styles/styles.ts";
+import {Alert, Text, TouchableOpacity, View} from 'react-native';
+
 import {downloadModel} from "../api/model.ts";
 import ProgressBar from "../components/ProgressBar.tsx";
 import {getLocale, setLocale, t} from '../languages/i18n';
 import {useDB} from "../context/DBContext.tsx";
 import {clearDatabase} from "../api/utils.ts";
 import {syncUnsyncedDocuments} from "../api/sync.ts";
+import {useStyles} from "../custom_hooks/useStyles.ts";
+import {useTheme} from "../context/ThemeContext.tsx";
 
 function SettingsScreen() {
     console.log("SettingsScreen Rendered!");
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
     const [language, setLanguage] = useState(getLocale());
+    const styles = useStyles();
 
 
     const dbInstance = useDB()!;
 
     const embeddingModel = "nomic-ai/nomic-embed-text-v1.5-GGUF";
     const whisperModel = "ggerganov/whisper.cpp";
+    const {colors, toggle, isDark} = useTheme();
 
     const toggleLanguage = () => {
         const newLang = language === 'en' ? 'ru' : 'en';
@@ -73,8 +76,12 @@ function SettingsScreen() {
 
 
     return (
-        <SafeAreaView style={{flex: 1, padding: 20}}>
-
+        <View style={{flex: 1, backgroundColor: colors.bgPrimary}}>
+            <TouchableOpacity style={styles.defaultButton} onPress={toggle}>
+                <Text style={styles.buttonText}>
+                    {isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                </Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.defaultButton} onPress={() => {
                 void handleDownloadModel(embeddingModel, "nomic-embed-text-v1.5.Q8_0.gguf");
             }}>
@@ -107,7 +114,7 @@ function SettingsScreen() {
                 <Text style={styles.buttonText}>{t('syncDatabase')}</Text>
 
             </TouchableOpacity>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -12,7 +12,6 @@ import {
     searchServerDB,
     updateMetadataLocalDB
 } from "../api/utils.ts";
-import {styles} from "../styles/styles.ts";
 import {loadLlamaModel, loadWhisperModel} from "../api/model.ts";
 import BubbleImage from "../components/BubbleImage.tsx";
 import {releaseAllWhisper} from "whisper.rn";
@@ -24,6 +23,8 @@ import {BarIndicator,} from 'react-native-indicators';
 import {executeSQL} from "../api/dev_utils.ts";
 import {useDB} from "../context/DBContext.tsx";
 import {ImageMessage} from "../types/types.ts";
+import {useStyles} from "../custom_hooks/useStyles.ts";
+import {useTheme} from "../context/ThemeContext.tsx";
 // import NetInfo from '@react-native-community/netinfo';
 // import {syncUnsyncedDocuments} from "../api/sync.ts";
 
@@ -45,6 +46,8 @@ function ChatScreen() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [pinnedImageID, setPinnedImageID] = useState<number | null>(null);
     const [showScrollDownButton, setShowScrollDownButton] = useState(false);
+    const styles = useStyles();
+    const {colors} = useTheme();
 
     // TODO: Fix this? null safety
     const dbInstance = useDB()!;
@@ -307,8 +310,7 @@ function ChatScreen() {
     };
 
     return (
-        <>
-
+        <View style={{flex: 1, backgroundColor: colors.bgPrimary}}>
             <Animated.ScrollView
                 contentContainerStyle={styles.chatContainer}
                 ref={scrollViewRef}
@@ -404,7 +406,7 @@ function ChatScreen() {
                 onClose={() => setPickerVisible(false)}
                 onPhotoSelected={handlePhotoSelected}
             />
-        </>
+        </View>
     );
 
 

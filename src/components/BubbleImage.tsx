@@ -1,9 +1,10 @@
 import {useState} from 'react';
 import {Image, Text, TouchableOpacity, View} from 'react-native';
-import {styles} from '../styles/styles.ts';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import {ImageMessage} from '../types/types.ts';
 import ImageViewer from './ImageViewer.tsx';
+import {useStyles} from "../custom_hooks/useStyles.ts";
+import {useTheme} from "../context/ThemeContext.tsx";
 
 
 export default function BubbleImage(props: {
@@ -12,7 +13,8 @@ export default function BubbleImage(props: {
     onPress: () => void;
 }) {
     const [viewerVisible, setViewerVisible] = useState(false);
-
+    const styles = useStyles();
+    const {colors} = useTheme();
     return (
         <>
             <View
@@ -47,8 +49,9 @@ export default function BubbleImage(props: {
                         <Icon
                             name="pencil"
                             size={18}
-                            color="#0b43d6"
+                            color={colors.primaryMuted}
                         />
+
                     </View>
                 </TouchableOpacity>
             </View>

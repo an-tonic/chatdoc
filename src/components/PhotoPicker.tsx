@@ -3,6 +3,7 @@ import {Alert, Text, TouchableOpacity, View} from 'react-native';
 import Modal from 'react-native-modal';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {requestCameraPermissions, requestStoragePermissions} from "../api/permissions.ts";
+import { useTheme } from '../context/ThemeContext.tsx';
 
 type Props = {
     visible: boolean;
@@ -12,6 +13,8 @@ type Props = {
 
 
 export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) {
+    const {colors} = useTheme();
+
     const openCamera = async () => {
         onClose();
         const hasPermission = await requestCameraPermissions();
@@ -41,13 +44,13 @@ export default function PhotoPicker({visible, onClose, onPhotoSelected}: Props) 
 
     return (
         <Modal isVisible={visible} onBackdropPress={onClose} style={{justifyContent: 'flex-end', margin: 0}}>
-            <View style={{backgroundColor: 'white', padding: 20, borderTopLeftRadius: 12, borderTopRightRadius: 12}}>
+            <View style={{backgroundColor: colors.bgPrimary, padding: 20, borderTopLeftRadius: 12, borderTopRightRadius: 12}}>
                 <TouchableOpacity onPress={openCamera}
-                                  style={{paddingVertical: 15, borderBottomWidth: 1, borderColor: '#eee'}}>
-                    <Text style={{fontSize: 18, textAlign: 'center'}}>Take a Photo</Text>
+                                  style={{paddingVertical: 15, borderBottomWidth: 1, borderColor: colors.bgSecondary}}>
+                    <Text style={{color: colors.textPrimary, fontSize: 18, textAlign: 'center'}}>Take a Photo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={openGallery} style={{paddingVertical: 15}}>
-                    <Text style={{fontSize: 18, textAlign: 'center'}}>Choose from Gallery</Text>
+                    <Text style={{color: colors.textPrimary, fontSize: 18, textAlign: 'center'}}>Choose from Gallery</Text>
                 </TouchableOpacity>
             </View>
         </Modal>
