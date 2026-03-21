@@ -9,6 +9,7 @@ export type DocMessage = {
     fileType: FileType;
     description: string;
     source: 'user' | 'search';
+    cacheKey: number;
 };
 
 export interface Document {

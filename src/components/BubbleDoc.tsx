@@ -37,9 +37,10 @@ function openViewer(
 }
 
 export default function BubbleDoc(props: {
-    pinnedImageID: number | null;
-    doc: DocMessage;
-    onPress: () => void;
+    pinnedImageID: number | null,
+    doc: DocMessage,
+    onPress: () => void,
+    onDocUpdated?: () => void
 }) {
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
     const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
@@ -68,7 +69,7 @@ export default function BubbleDoc(props: {
                 >
                     <View style={styles.imageWrapper}>
                         <Image
-                            source={{uri: props.doc.thumbnailUri}}
+                            source={{uri: props.doc.thumbnailUri + '?t=' + props.doc.cacheKey}}
                             style={styles.image}
                             resizeMode="cover"
                         />
@@ -97,6 +98,7 @@ export default function BubbleDoc(props: {
             <ImageViewer
                 uri={props.doc.thumbnailUri}
                 visible={imageViewerVisible}
+                onFileUpdated={() => props.onDocUpdated?.()}
                 onClose={() => setImageViewerVisible(false)}
             />
             <PdfViewer

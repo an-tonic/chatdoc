@@ -207,6 +207,14 @@ function ChatScreen() {
         scrollViewRef.current?.scrollToEnd();
     };
 
+    const handleDocUpdated = (localDBID: number) => {
+        setMessages(prev => prev.map(msg =>
+            msg.type === 'doc' && msg.localDBID === localDBID
+                ? {...msg, cacheKey: (msg.cacheKey ?? 0) + 1}
+                : msg
+        ));
+    };
+
     const addDocToUI = (
         id: number,
         filePath: string,
@@ -223,6 +231,7 @@ function ChatScreen() {
             fileType,
             description,
             source,
+            cacheKey: 0,
         }]);
         setPinnedDocID(source === 'user' ? id : null);
     };
@@ -322,6 +331,7 @@ function ChatScreen() {
                                 key={index}
                                 doc={msg}
                                 pinnedImageID={pinnedDocID}
+                                onDocUpdated={() => handleDocUpdated(msg.localDBID)}
                                 onPress={() => {
                                     const id = msg.localDBID;
                                     setPinnedDocID(prev => (prev === id ? null : id));
