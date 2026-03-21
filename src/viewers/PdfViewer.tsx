@@ -1,7 +1,9 @@
-import React from 'react';
-import {Modal, StatusBar, StyleSheet, TouchableOpacity, View} from 'react-native';
+import React, {useState} from 'react';
+import {Modal, StyleSheet, Text, View} from 'react-native';
 import Pdf from 'react-native-pdf';
-import Icon from '@react-native-vector-icons/material-design-icons';
+import ViewerTopBar from '../components/ViewerTopBar.tsx';
+import ViewerBottomBar from "../components/ViewverBottomBar.tsx";
+// import ViewerBottomBar from './ViewerBottomBar.tsx';
 
 type Props = {
     filePath: string;
@@ -10,13 +12,16 @@ type Props = {
 };
 
 export default function PdfViewer({filePath, visible, onClose}: Props) {
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+
     return (
         <Modal
             visible={visible}
             transparent={false}
             animationType="fade"
             onRequestClose={onClose}
-            statusBarTranslucent
+            statusBarTranslucent={false}
         >
             <View style={styles.container}>
                 <Pdf
@@ -24,12 +29,20 @@ export default function PdfViewer({filePath, visible, onClose}: Props) {
                     style={styles.pdf}
                     enablePaging={false}
                     trustAllCerts={false}
+                    onPageChanged={(p, total) => {
+                        setPage(p);
+                        setTotalPages(total);
+                    }}
                 />
             </View>
+            <ViewerTopBar filePath={filePath} fileType="pdf" onClose={onClose}/>
 
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Icon name="close" size={26} color="#fff"/>
-            </TouchableOpacity>
+            <ViewerBottomBar>
+                {totalPages > 0 && (
+                    <Text style={styles.pageCount}>{page} / {totalPages}</Text>
+                )}
+            </ViewerBottomBar>
+
         </Modal>
     );
 }
@@ -44,12 +57,8 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    closeButton: {
-        position: 'absolute',
-        top: (StatusBar.currentHeight ?? 0) + 12,
-        right: 16,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        borderRadius: 20,
-        padding: 6,
+    pageCount: {
+        color: '#fff',
+        fontSize: 14,
     },
 });
