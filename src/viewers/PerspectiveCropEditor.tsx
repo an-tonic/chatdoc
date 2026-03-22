@@ -22,7 +22,7 @@ type Point = { x: number; y: number };
 type Props = {
     uri: string;
     onClose: () => void;
-    onConfirm: (corners: [Point, Point, Point, Point]) => void;
+    onConfirm: (corners: [Point, Point, Point, Point], layoutW: number, layoutH: number) => void;
     imageWidth: number;
     imageHeight: number;
 };
@@ -40,7 +40,7 @@ export default function PerspectiveCropEditor({uri, onClose, onConfirm, imageWid
 
     const def = useRef(defaults()).current;
     const [imageLayout, setImageLayout] = useState({x: 0, y: 0, width: 0, height: 0});
-    console.log("rendered");
+
     const pans = useRef(def.map(() => new Animated.ValueXY())).current;
 
     const abs = useRef(pans.map((pan, i) => ({
@@ -56,18 +56,14 @@ export default function PerspectiveCropEditor({uri, onClose, onConfirm, imageWid
     }))).current;
 
     const handleConfirm = () => {
-        const sx = (imageWidth * PixelRatio.get()) / imageLayout.width;
-        const sy = (imageHeight * PixelRatio.get()) / imageLayout.height;
-        console.log(sx);
-        console.log(PixelRatio.get());
+
         const mapped = abs.map(p => ({
             // @ts-ignore
-            x: Math.round((((p.x._a._value + p.x._a._offset) + p.x._b._value) - imageLayout.x)),
+            x: (p.x._a._value + p.x._a._offset) + p.x._b._value - imageLayout.x,
             // @ts-ignore
-            y: Math.round((((p.y._a._value + p.y._a._offset) + p.y._b._value) - imageLayout.y) * sy),
+            y: (p.y._a._value + p.y._a._offset) + p.y._b._value - imageLayout.y,
         })) as [Point, Point, Point, Point];
-        // console.log(mapped[0]);
-        // onConfirm(mapped);
+        onConfirm(mapped, imageLayout.width, imageLayout.height);
     };
 
     const rate = 5;

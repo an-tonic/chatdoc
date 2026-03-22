@@ -9,23 +9,35 @@ function dist(a: Point, b: Point) {
 
 export async function applyPerspectiveCrop(
     imagePath: string,
-    corners: [Point, Point, Point, Point], // topLeft, topRight, bottomRight, bottomLeft
+    corners: [Point, Point, Point, Point],
+    layoutW: number,
+    layoutH: number,// topLeft, topRight, bottomRight, bottomLeft
 ): Promise<boolean> {
 
     try {
         const cleanPath = imagePath.replace('file://', '');
         const base64 = await RNFS.readFile(cleanPath, 'base64');
         const srcMat = OpenCV.base64ToMat(base64);
+        const info = OpenCV.toJSValue(srcMat);
+        const sx = info.cols / layoutW;
+        const sy = info.rows / layoutH;
+        const scaledCorners: [Point, Point, Point, Point] = corners.map(c => ({
+            x: Math.round(c.x * sx),
+            y: Math.round(c.y * sy),
+        })) as [Point, Point, Point, Point];
+
 
         // build srcPoints PointVector
-        const srcPt = corners.map(c => OpenCV.createObject(ObjectType.Point2f, c.x, c.y));
+        const srcPt = scaledCorners.map(c => OpenCV.createObject(ObjectType.Point2f, c.x, c.y));
         const srcPoints = OpenCV.createObject(ObjectType.Point2fVector, srcPt);
 
 
         // compute output size
-        const outW = Math.round(Math.max(dist(corners[0], corners[1]), dist(corners[3], corners[2])));
-        const outH = Math.round(Math.max(dist(corners[0], corners[3]), dist(corners[1], corners[2])));
-
+        console.log(scaledCorners);
+        console.log(dist(scaledCorners[0], scaledCorners[1]), dist(scaledCorners[3], scaledCorners[2]),dist(scaledCorners[0], scaledCorners[3]), dist(scaledCorners[1], scaledCorners[2]));
+        const outW = Math.round(Math.max(dist(scaledCorners[0], scaledCorners[1]), dist(scaledCorners[3], scaledCorners[2])));
+        const outH = Math.round(Math.max(dist(scaledCorners[0], scaledCorners[3]), dist(scaledCorners[1], scaledCorners[2])));
+        console.log(outW, outH);
         // build dstPoints PointVector
         const dstCorners: Point[] = [
             {x: 0, y: 0},
@@ -57,7 +69,7 @@ export async function applyPerspectiveCrop(
 
         // 7. save result
         OpenCV.saveMatToFile(dstMat, cleanPath, 'png', 0);
-
+     
         OpenCV.clearBuffers();
         return true
     } catch (e) {

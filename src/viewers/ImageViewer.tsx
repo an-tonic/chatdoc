@@ -51,13 +51,13 @@ export default function ImageViewer({uri, visible, onClose, onFileUpdated}: Prop
             />
             {cropEditorVisible && (
                 <PerspectiveCropEditor
-                    uri={displayUri}
+                    uri={uri}
                     onClose={() => setCropEditorVisible(false)}
                     imageWidth={imgSize.width}
                     imageHeight={imgSize.height}
-                    onConfirm={async (corners) => {
+                    onConfirm={async (corners, w, h) => {
                         setCropEditorVisible(false);
-                        const success = await applyPerspectiveCrop(displayUri, corners);
+                        const success = await applyPerspectiveCrop(displayUri, corners, w, h);
                         if (success) {
                             setDisplayUri(uri + '?t=' + Date.now());
                             onFileUpdated?.();
