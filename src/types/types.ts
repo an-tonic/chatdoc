@@ -12,6 +12,9 @@ export type DocMessage = {
     cacheKey: number;
 };
 
+export type Point = {x: number; y: number};
+
+
 export interface Document {
     image_url: string;
     description: string;

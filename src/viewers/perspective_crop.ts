@@ -1,14 +1,7 @@
-import {
-    BorderTypes,
-    DataTypes,
-    DecompTypes,
-    InterpolationFlags,
-    ObjectType,
-    OpenCV
-} from 'react-native-fast-opencv';
+import {BorderTypes, DataTypes, DecompTypes, InterpolationFlags, ObjectType, OpenCV} from 'react-native-fast-opencv';
 import RNFS from 'react-native-fs';
+import {Point} from "../types/types.ts";
 
-type Point = { x: number; y: number };
 
 function dist(a: Point, b: Point) {
     return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -45,8 +38,6 @@ export async function applyPerspectiveCrop(
 
 
         // compute transform matrix
-        console.log(srcPoints, dstPoints);
-
         const M = OpenCV.invoke('getPerspectiveTransform', srcPoints, dstPoints, DecompTypes.DECOMP_LU);
 
         // warp
